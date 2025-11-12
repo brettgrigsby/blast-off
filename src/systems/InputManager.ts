@@ -76,40 +76,37 @@ export class InputManager {
       return;
     }
 
-    // Get the grid position where the pointer currently is
-    const pointerGridPos = this.gridManager.pixelToGrid(pointer.x, pointer.y);
-    const pointerRow = pointerGridPos.row;
-    const selectedRow = this.selectedBlock.row;
-    const selectedColumn = this.selectedBlock.column;
-
-    // Check if pointer is in the same column as the selected block
-    if (pointerGridPos.column !== selectedColumn) {
+    // Check if pointer is in the same column (using world x coordinates)
+    const COLUMN_TOLERANCE = GridManager.COLUMN_WIDTH * 0.6;
+    const xDistance = Math.abs(pointer.x - this.selectedBlock.x);
+    if (xDistance > COLUMN_TOLERANCE) {
       return; // Can only drag within the same column
     }
 
-    // Check if pointer is in an adjacent row
-    const rowDifference = pointerRow - selectedRow;
-    if (Math.abs(rowDifference) !== 1) {
-      return; // Not in an adjacent row
+    // Determine drag direction based on world coordinates
+    const yDifference = pointer.y - this.selectedBlock.y;
+    if (Math.abs(yDifference) < GridManager.ROW_HEIGHT * 0.2) {
+      return; // Not dragging far enough yet
     }
 
-    // Check if the target row is within grid bounds
-    const adjacentRow = pointerRow;
-    if (!this.gridManager.isInBounds(selectedColumn, adjacentRow)) {
-      return; // Can't swap outside grid bounds
+    const direction: 1 | -1 = yDifference > 0 ? 1 : -1; // 1 = down, -1 = up
+
+    // Find physically adjacent block in the drag direction
+    const adjacentBlock = this.findAdjacentBlock(this.selectedBlock, direction);
+    if (!adjacentBlock) {
+      return; // No adjacent block found
     }
 
-    // Calculate the position of the boundary between the selected block and adjacent block
-    const boundaryY = this.gridManager.gridToPixel(selectedColumn, adjacentRow).y -
-                      (rowDifference > 0 ? GridManager.ROW_HEIGHT / 2 : -GridManager.ROW_HEIGHT / 2);
+    // Calculate the halfway point between the blocks
+    const halfwayY = (this.selectedBlock.y + adjacentBlock.y) / 2;
 
     // Check if we've crossed the halfway threshold
-    const crossedThreshold = rowDifference > 0
-      ? pointer.y >= boundaryY  // Dragging down
-      : pointer.y <= boundaryY; // Dragging up
+    const crossedThreshold = direction > 0
+      ? pointer.y >= halfwayY  // Dragging down
+      : pointer.y <= halfwayY; // Dragging up
 
-    if (crossedThreshold && this.canSwap(this.selectedBlock, adjacentRow)) {
-      this.swapBlocks(this.selectedBlock, adjacentRow);
+    if (crossedThreshold && this.canSwap(this.selectedBlock, adjacentBlock)) {
+      this.swapBlocks(this.selectedBlock, adjacentBlock);
 
       // Trigger callback (for match detection)
       if (this.onSwapCallback) {
@@ -145,27 +142,110 @@ export class InputManager {
     // Convert pixel position to grid position
     const gridPos = this.gridManager.pixelToGrid(x, y);
 
-    // Get block at that grid position
-    return this.gridManager.getBlock(gridPos.column, gridPos.row);
+    // First check if there's a block in the grid at this position
+    const gridBlock = this.gridManager.getBlock(gridPos.column, gridPos.row);
+    if (gridBlock) {
+      return gridBlock;
+    }
+
+    // Also check all blocks (including those in groups) by actual position
+    const allBlocks = this.gridManager.getAllBlocks();
+    const BLOCK_SIZE = 80; // GridManager.ROW_HEIGHT
+
+    for (const block of allBlocks) {
+      // Check if click is within this block's bounds
+      const halfSize = BLOCK_SIZE / 2;
+      if (
+        x >= block.x - halfSize &&
+        x <= block.x + halfSize &&
+        y >= block.y - halfSize &&
+        y <= block.y + halfSize
+      ) {
+        return block;
+      }
+    }
+
+    return null;
   }
 
-  private canSwap(block: Block, targetRow: number): boolean {
-    // Check if target row is within bounds
-    if (!this.gridManager.isInBounds(block.column, targetRow)) {
-      return false;
+  /**
+   * Find a block that is physically adjacent to the given block in the specified direction.
+   * Uses actual world coordinates instead of grid positions.
+   * @param block The source block
+   * @param direction 1 for down, -1 for up
+   * @returns The adjacent block in that direction, or null if none found
+   */
+  private findAdjacentBlock(block: Block, direction: 1 | -1): Block | null {
+    const allBlocks = this.gridManager.getAllBlocks();
+    const blockGroup = this.gridManager.getBlockGroup(block);
+    const ADJACENCY_THRESHOLD = GridManager.ROW_HEIGHT * 1.2; // Allow some tolerance
+    const COLUMN_TOLERANCE = GridManager.COLUMN_WIDTH * 0.3; // Blocks must be in roughly the same column
+
+    let closestBlock: Block | null = null;
+    let closestDistance = Infinity;
+
+    for (const otherBlock of allBlocks) {
+      // Skip the source block itself
+      if (otherBlock === block) {
+        continue;
+      }
+
+      // Check if blocks are in the same column (using world x coordinates)
+      const xDistance = Math.abs(otherBlock.x - block.x);
+      if (xDistance > COLUMN_TOLERANCE) {
+        continue;
+      }
+
+      // Calculate vertical distance
+      const yDistance = otherBlock.y - block.y;
+
+      // Check if block is in the correct direction
+      if (direction === 1 && yDistance <= 0) {
+        continue; // Looking down, but other block is above
+      }
+      if (direction === -1 && yDistance >= 0) {
+        continue; // Looking up, but other block is below
+      }
+
+      // Check if within adjacency threshold
+      const distance = Math.abs(yDistance);
+      if (distance > ADJACENCY_THRESHOLD) {
+        continue;
+      }
+
+      // If blocks are in a group, they must be in the same group
+      if (blockGroup) {
+        const otherBlockGroup = this.gridManager.getBlockGroup(otherBlock);
+        if (otherBlockGroup !== blockGroup) {
+          continue;
+        }
+      }
+
+      // Track the closest block in the direction
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestBlock = otherBlock;
+      }
     }
 
-    // Check if target row is adjacent to current row (can only swap with neighbors)
-    const rowDifference = Math.abs(targetRow - block.row);
-    if (rowDifference !== 1) {
-      return false;
+    return closestBlock;
+  }
+
+  private canSwap(block: Block, targetBlock: Block): boolean {
+    // Check if blocks are physically adjacent (using world coordinates)
+    const yDistance = Math.abs(targetBlock.y - block.y);
+    const ADJACENCY_THRESHOLD = GridManager.ROW_HEIGHT * 1.3;
+
+    if (yDistance > ADJACENCY_THRESHOLD) {
+      return false; // Not adjacent
     }
 
-    // Check if there's actually a block at the target position
-    // We can only swap with another block, not move into empty space
-    const targetBlock = this.gridManager.getBlock(block.column, targetRow);
-    if (!targetBlock) {
-      return false;
+    // Check if blocks are in roughly the same column (using world coordinates)
+    const xDistance = Math.abs(targetBlock.x - block.x);
+    const COLUMN_TOLERANCE = GridManager.COLUMN_WIDTH * 0.4;
+
+    if (xDistance > COLUMN_TOLERANCE) {
+      return false; // Not in same column
     }
 
     // Allow swapping with blocks in grid OR blocks in the same group (Iteration 6)
@@ -185,28 +265,42 @@ export class InputManager {
     return true;
   }
 
-  private swapBlocks(block: Block, targetRow: number): void {
+  private swapBlocks(block: Block, targetBlock: Block): void {
     const currentRow = block.row;
-    const column = block.column;
+    const currentColumn = block.column;
+    const targetRow = targetBlock.row;
+    const targetColumn = targetBlock.column;
 
-    // Get the block at the target position (might be null)
-    const targetBlock = this.gridManager.getBlock(column, targetRow);
+    // Check if blocks are in a group
+    const blockGroup = this.gridManager.getBlockGroup(block);
 
-    // Get pixel positions for both grid locations
-    const blockTargetPos = this.gridManager.gridToPixel(column, targetRow);
-    const targetBlockPos = this.gridManager.gridToPixel(column, currentRow);
+    // Store current positions for swapping
+    const blockTargetX = targetBlock.x;
+    const blockTargetY = targetBlock.y;
+    const targetBlockX = block.x;
+    const targetBlockY = block.y;
 
-    // Update grid positions
-    this.gridManager.setBlock(column, currentRow, targetBlock);
-    this.gridManager.setBlock(column, targetRow, block);
+    if (blockGroup) {
+      // Swapping within a group - just swap positions, don't touch grid
+      block.setGridPosition(targetColumn, targetRow);
+      block.setPosition(blockTargetX, blockTargetY);
 
-    // Update the selected block's position and grid coordinates
-    block.setGridPosition(column, targetRow);
-    block.setPosition(blockTargetPos.x, blockTargetPos.y);
+      targetBlock.setGridPosition(currentColumn, currentRow);
+      targetBlock.setPosition(targetBlockX, targetBlockY);
+    } else {
+      // Normal swap in grid - use grid positions
+      const blockTargetPos = this.gridManager.gridToPixel(currentColumn, targetRow);
+      const targetBlockPos = this.gridManager.gridToPixel(currentColumn, currentRow);
 
-    // If there was a block at the target, swap it to the current position
-    if (targetBlock) {
-      targetBlock.setGridPosition(column, currentRow);
+      this.gridManager.setBlock(currentColumn, currentRow, targetBlock);
+      this.gridManager.setBlock(currentColumn, targetRow, block);
+
+      // Update the selected block's position and grid coordinates
+      block.setGridPosition(currentColumn, targetRow);
+      block.setPosition(blockTargetPos.x, blockTargetPos.y);
+
+      // Update target block to the current position
+      targetBlock.setGridPosition(currentColumn, currentRow);
       targetBlock.setPosition(targetBlockPos.x, targetBlockPos.y);
     }
   }
