@@ -20,6 +20,10 @@ export class GameScene extends Phaser.Scene {
   private inputManager!: InputManager
   private matchDetector!: MatchDetector
 
+  // Score tracking (Iteration 5)
+  private blocksRemoved: number = 0
+  private scoreText!: Phaser.GameObjects.Text
+
   constructor() {
     super({ key: 'GameScene' })
   }
@@ -50,6 +54,34 @@ export class GameScene extends Phaser.Scene {
         this.gridManager.placeFallingBlock(block)
         blocksPlaced = true
       }
+    }
+
+    // Update all blocks (including launching ones) (Iteration 5)
+    const allBlocks = this.gridManager.getAllBlocks()
+    const blocksToRemove: Block[] = []
+
+    for (const block of allBlocks) {
+      // Skip blocks that are in the grid (not moving)
+      if (block.isInGrid) continue
+
+      // Update launching blocks
+      block.update(delta)
+
+      // Check if block is above screen and should be removed
+      if (block.isAboveScreen()) {
+        blocksToRemove.push(block)
+      }
+    }
+
+    // Remove blocks that went above screen
+    for (const block of blocksToRemove) {
+      this.gridManager.removeBlock(block)
+      this.blocksRemoved++
+    }
+
+    // Update score display if blocks were removed
+    if (blocksToRemove.length > 0) {
+      this.updateScoreDisplay()
     }
 
     // Check for matches after blocks are placed (Iteration 4)
@@ -141,6 +173,31 @@ export class GameScene extends Phaser.Scene {
       )
       .setOrigin(0.5)
       .setDepth(1000) // Keep text above blocks
+
+    // Add score counter (Iteration 5)
+    this.scoreText = this.add
+      .text(
+        GameSettings.canvas.width / 2,
+        1020,
+        'Blocks Removed: 0',
+        {
+          fontSize: '32px',
+          color: '#ffffff',
+          fontFamily: 'Arial',
+          fontStyle: 'bold',
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(1000) // Keep text above blocks
+  }
+
+  /**
+   * Update the score display (Iteration 5)
+   */
+  private updateScoreDisplay(): void {
+    if (this.scoreText) {
+      this.scoreText.setText(`Blocks Removed: ${this.blocksRemoved}`)
+    }
   }
 
   /**

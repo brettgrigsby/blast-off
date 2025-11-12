@@ -125,21 +125,44 @@ export class MatchDetector {
   }
 
   /**
-   * Check for matches and convert matched blocks to grey
-   * Returns true if any matches were found
+   * Check for matches and launch matched blocks + all blocks above them
+   * Returns number of blocks launched (for score tracking)
    */
-  public checkAndProcessMatches(): boolean {
+  public checkAndProcessMatches(): number {
     const matchResult = this.detectMatches();
 
     if (matchResult.blocks.length > 0) {
-      // Convert all matched blocks to grey
-      matchResult.blocks.forEach(block => {
-        block.setColor(BlockColor.GREY);
+      // Track all blocks to launch (matched + blocks above)
+      const blocksToLaunch = new Set<Block>();
+
+      // Add matched blocks and find all blocks above them
+      matchResult.blocks.forEach(matchedBlock => {
+        // Convert matched block to grey
+        matchedBlock.setColor(BlockColor.GREY);
+        blocksToLaunch.add(matchedBlock);
+
+        // Find all blocks above this matched block in the same column
+        const column = matchedBlock.column;
+        for (let row = matchedBlock.row - 1; row >= 0; row--) {
+          const blockAbove = this.gridManager.getBlock(column, row);
+          if (blockAbove) {
+            blocksToLaunch.add(blockAbove);
+          }
+        }
       });
 
-      return true;
+      // Launch all blocks (matched + above)
+      blocksToLaunch.forEach(block => {
+        // Remove block from grid so it becomes a "launching" block
+        this.gridManager.setBlock(block.column, block.row, null);
+
+        // Launch the block with velocity based on match size
+        block.launch(matchResult.size);
+      });
+
+      return matchResult.blocks.length; // Return only matched blocks for score
     }
 
-    return false;
+    return 0;
   }
 }

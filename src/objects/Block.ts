@@ -143,6 +143,33 @@ export class Block {
   }
 
   /**
+   * Launch this block upward with velocity based on match size
+   * @param matchSize Number of blocks in the match (3, 4, 5+)
+   */
+  public launch(matchSize: number): void {
+    // Calculate launch velocity based on match size
+    let launchVelocity: number;
+    if (matchSize === 3) {
+      launchVelocity = -400; // Negative = upward
+    } else if (matchSize === 4) {
+      launchVelocity = -600;
+    } else {
+      launchVelocity = -800; // 5 or more
+    }
+
+    this.setVelocity(0, launchVelocity);
+    this.isInGrid = false; // No longer in grid when launching
+  }
+
+  /**
+   * Check if this block is above the screen top boundary
+   */
+  public isAboveScreen(): boolean {
+    // Block is above screen if its bottom edge is above y=0
+    return this.y < 0;
+  }
+
+  /**
    * Get a random playable color (not grey)
    */
   public static getRandomColor(): BlockColor {
