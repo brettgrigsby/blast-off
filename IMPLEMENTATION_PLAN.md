@@ -237,8 +237,9 @@ After each iteration, verify:
 
 ## Current Status
 
-**Active Iteration:** Ready for Iteration 3
+**Active Iteration:** Ready for Iteration 4
 **Completed Iterations:**
 - ✅ Iteration 1 - Grid System & Static Blocks
 - ✅ Iteration 2 - Block Spawning System
-**Next Steps:** Begin Iteration 3 - Drag & Swap Mechanics
+- ✅ Iteration 3 - Drag & Swap Mechanics
+**Next Steps:** Begin Iteration 4 - Match Detection

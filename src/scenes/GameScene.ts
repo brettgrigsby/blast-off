@@ -3,6 +3,7 @@ import GameSettings from '../config/GameSettings'
 import { GridManager } from '../systems/GridManager'
 import { Block } from '../objects/Block'
 import { BlockSpawner } from '../systems/BlockSpawner'
+import { InputManager } from '../systems/InputManager'
 
 declare global {
   interface Window {
@@ -15,6 +16,7 @@ export class GameScene extends Phaser.Scene {
   private gridManager!: GridManager
   private gridLinesGraphics!: Phaser.GameObjects.Graphics
   private blockSpawner!: BlockSpawner
+  private inputManager!: InputManager
 
   constructor() {
     super({ key: 'GameScene' })
@@ -103,6 +105,9 @@ export class GameScene extends Phaser.Scene {
     // Initialize and start block spawner (Iteration 2)
     this.blockSpawner = new BlockSpawner(this, this.gridManager)
     this.blockSpawner.start()
+
+    // Initialize input manager (Iteration 3)
+    this.inputManager = new InputManager(this, this.gridManager)
 
     // Add game title
     this.add
