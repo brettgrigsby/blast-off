@@ -13,9 +13,13 @@ export class InputManager {
   // Visual feedback
   private selectionGraphics: Phaser.GameObjects.Graphics;
 
-  constructor(scene: Phaser.Scene, gridManager: GridManager) {
+  // Callback for when a swap occurs
+  private onSwapCallback?: () => void;
+
+  constructor(scene: Phaser.Scene, gridManager: GridManager, onSwapCallback?: () => void) {
     this.scene = scene;
     this.gridManager = gridManager;
+    this.onSwapCallback = onSwapCallback;
 
     // Create graphics for selection highlight
     this.selectionGraphics = scene.add.graphics();
@@ -98,6 +102,11 @@ export class InputManager {
 
       // Update selection highlight
       this.drawSelectionHighlight(this.selectedBlock);
+
+      // Trigger callback (for match detection)
+      if (this.onSwapCallback) {
+        this.onSwapCallback();
+      }
     }
   }
 

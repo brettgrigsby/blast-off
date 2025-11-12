@@ -4,6 +4,7 @@ import { GridManager } from '../systems/GridManager'
 import { Block } from '../objects/Block'
 import { BlockSpawner } from '../systems/BlockSpawner'
 import { InputManager } from '../systems/InputManager'
+import { MatchDetector } from '../systems/MatchDetector'
 
 declare global {
   interface Window {
@@ -17,6 +18,7 @@ export class GameScene extends Phaser.Scene {
   private gridLinesGraphics!: Phaser.GameObjects.Graphics
   private blockSpawner!: BlockSpawner
   private inputManager!: InputManager
+  private matchDetector!: MatchDetector
 
   constructor() {
     super({ key: 'GameScene' })
@@ -35,6 +37,8 @@ export class GameScene extends Phaser.Scene {
 
     // Update falling blocks
     const fallingBlocks = this.gridManager.getFallingBlocks()
+    let blocksPlaced = false
+
     for (const block of fallingBlocks) {
       // Update block position based on velocity
       block.update(delta)
@@ -44,7 +48,14 @@ export class GameScene extends Phaser.Scene {
       if (collision.collided) {
         // Place the block in the grid
         this.gridManager.placeFallingBlock(block)
+        blocksPlaced = true
       }
+    }
+
+    // Check for matches after blocks are placed (Iteration 4)
+    // Matches can trigger at any time per spec
+    if (blocksPlaced && this.matchDetector) {
+      this.matchDetector.checkAndProcessMatches()
     }
   }
 
@@ -98,6 +109,9 @@ export class GameScene extends Phaser.Scene {
     this.gridLinesGraphics = this.add.graphics()
     this.gridManager.drawGridLines(this.gridLinesGraphics)
 
+    // Initialize match detector (Iteration 4)
+    this.matchDetector = new MatchDetector(this.gridManager)
+
     // Populate grid with random colored blocks for testing (Iteration 1)
     // Comment this out for Iteration 2 to see spawning
     // this.populateTestGrid()
@@ -107,7 +121,10 @@ export class GameScene extends Phaser.Scene {
     this.blockSpawner.start()
 
     // Initialize input manager (Iteration 3)
-    this.inputManager = new InputManager(this, this.gridManager)
+    // Pass callback to check for matches after swaps (Iteration 4)
+    this.inputManager = new InputManager(this, this.gridManager, () => {
+      this.matchDetector.checkAndProcessMatches()
+    })
 
     // Add game title
     this.add
