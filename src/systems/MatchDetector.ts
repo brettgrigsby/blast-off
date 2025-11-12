@@ -1,4 +1,5 @@
 import { Block, BlockColor } from '../objects/Block';
+import { BlockGroup } from '../objects/BlockGroup';
 import { GridManager } from './GridManager';
 
 export interface MatchResult {
@@ -125,31 +126,32 @@ export class MatchDetector {
   }
 
   /**
-   * Check for matches and launch matched blocks + all blocks above them
+   * Check for matches and launch matched blocks + all blocks above them as groups
    * Returns number of blocks launched (for score tracking)
    */
   public checkAndProcessMatches(): number {
     const matchResult = this.detectMatches();
 
     if (matchResult.blocks.length > 0) {
-      // Track all blocks to launch (matched + blocks above)
-      const blocksToLaunch = new Set<Block>();
-      // Track which columns are affected by matches
-      const affectedColumns = new Set<number>();
+      // Track blocks to launch, organized by column
+      const columnBlocks = new Map<number, Set<Block>>();
 
       // Add matched blocks and find all blocks above them
       matchResult.blocks.forEach(matchedBlock => {
         // Convert matched block to grey
         matchedBlock.setColor(BlockColor.GREY);
-        blocksToLaunch.add(matchedBlock);
-        affectedColumns.add(matchedBlock.column);
+
+        const column = matchedBlock.column;
+        if (!columnBlocks.has(column)) {
+          columnBlocks.set(column, new Set());
+        }
+        columnBlocks.get(column)!.add(matchedBlock);
 
         // Find all blocks above this matched block in the same column
-        const column = matchedBlock.column;
         for (let row = matchedBlock.row - 1; row >= 0; row--) {
           const blockAbove = this.gridManager.getBlock(column, row);
           if (blockAbove) {
-            blocksToLaunch.add(blockAbove);
+            columnBlocks.get(column)!.add(blockAbove);
           }
         }
       });
@@ -157,28 +159,72 @@ export class MatchDetector {
       // Also check for any moving blocks in affected columns
       const allBlocks = this.gridManager.getAllBlocks();
       allBlocks.forEach(block => {
-        // Include any block in affected columns that's not already added
-        if (affectedColumns.has(block.column) && !block.isInGrid) {
-          blocksToLaunch.add(block);
+        // Include any block in affected columns that's not already in grid
+        if (columnBlocks.has(block.column) && !block.isInGrid) {
+          columnBlocks.get(block.column)!.add(block);
         }
       });
 
-      // Launch all blocks (matched + above + moving in same columns)
-      blocksToLaunch.forEach(block => {
-        // Remove block from grid if it's in the grid
-        if (block.isInGrid) {
-          this.gridManager.setBlock(block.column, block.row, null);
-          block.isInGrid = false;
-        }
+      // Create groups for each column and launch them
+      columnBlocks.forEach((blocksInColumn, column) => {
+        // Check if any of these blocks are already in a group
+        const existingGroup = this.findExistingGroup(Array.from(blocksInColumn));
 
-        // Launch the block with velocity based on match size
-        // Physics system will handle gravity and re-landing
-        block.launch(matchResult.size);
+        if (existingGroup) {
+          // Add force to existing group (force stacking)
+          const launchVelocity = this.getLaunchVelocity(matchResult.size);
+          existingGroup.addVelocity(0, launchVelocity);
+        } else {
+          // Create new group
+          const groupBlocks: Block[] = [];
+
+          blocksInColumn.forEach(block => {
+            // Remove block from grid if it's in the grid
+            if (block.isInGrid) {
+              this.gridManager.setBlock(block.column, block.row, null);
+              block.isInGrid = false;
+            }
+
+            // Launch the block with velocity based on match size
+            block.launch(matchResult.size);
+            groupBlocks.push(block);
+          });
+
+          // Create and add the group
+          const group = new BlockGroup(groupBlocks);
+          this.gridManager.addGroup(group);
+        }
       });
 
       return matchResult.blocks.length; // Return only matched blocks for score
     }
 
     return 0;
+  }
+
+  /**
+   * Find if any of these blocks already belong to a group
+   */
+  private findExistingGroup(blocks: Block[]): BlockGroup | null {
+    for (const block of blocks) {
+      const group = this.gridManager.getBlockGroup(block);
+      if (group) {
+        return group;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Get launch velocity for a given match size
+   */
+  private getLaunchVelocity(matchSize: number): number {
+    if (matchSize === 3) {
+      return -1600;
+    } else if (matchSize === 4) {
+      return -2400;
+    } else {
+      return -3200;
+    }
   }
 }

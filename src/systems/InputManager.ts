@@ -50,13 +50,16 @@ export class InputManager {
     // Find which block was clicked
     const clickedBlock = this.getBlockAtPosition(pointer.x, pointer.y);
 
-    if (clickedBlock && clickedBlock.isInGrid) {
-      // Only allow dragging blocks that are in the grid (not falling)
-      this.isDragging = true;
-      this.selectedBlock = clickedBlock;
+    if (clickedBlock) {
+      // Allow dragging blocks in grid OR blocks in a group (Iteration 6)
+      const blockGroup = this.gridManager.getBlockGroup(clickedBlock);
+      if (clickedBlock.isInGrid || blockGroup) {
+        this.isDragging = true;
+        this.selectedBlock = clickedBlock;
 
-      // Draw selection highlight
-      this.drawSelectionHighlight(clickedBlock);
+        // Draw selection highlight
+        this.drawSelectionHighlight(clickedBlock);
+      }
     }
   }
 
@@ -65,9 +68,10 @@ export class InputManager {
       return;
     }
 
-    // Check if the selected block is still in the grid (not launched/moving)
-    // If it got launched by a match, cancel the drag
-    if (!this.selectedBlock.isInGrid) {
+    // Check if the selected block is still valid for dragging
+    // Allow dragging if in grid OR in a group (Iteration 6)
+    const blockGroup = this.gridManager.getBlockGroup(this.selectedBlock);
+    if (!this.selectedBlock.isInGrid && !blockGroup) {
       this.handlePointerUp();
       return;
     }
@@ -164,7 +168,16 @@ export class InputManager {
       return false;
     }
 
-    // Only allow swapping with blocks that are also at rest in the grid (not moving/falling)
+    // Allow swapping with blocks in grid OR blocks in the same group (Iteration 6)
+    const selectedBlockGroup = this.gridManager.getBlockGroup(block);
+    const targetBlockGroup = this.gridManager.getBlockGroup(targetBlock);
+
+    // If both blocks are in the same group, allow swap
+    if (selectedBlockGroup && selectedBlockGroup === targetBlockGroup) {
+      return true;
+    }
+
+    // Otherwise, only allow swapping with blocks at rest in the grid
     if (!targetBlock.isInGrid) {
       return false;
     }

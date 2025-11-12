@@ -39,17 +39,89 @@ export class GameScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     if (!this.gridManager) return
 
-    // Unified physics update: process all moving blocks the same way
-    const movingBlocks = this.gridManager.getMovingBlocks()
     const blocksToRemove: Block[] = []
+    const groupsToRemove: any[] = []
     let blocksPlaced = false
 
+    // Update groups (Iteration 6)
+    const groups = this.gridManager.getGroups()
+    for (const group of groups) {
+      // Check if group is fully above screen -> remove entire group
+      if (group.isFullyAboveScreen()) {
+        groupsToRemove.push(group)
+        continue
+      }
+
+      // Update the group (applies gravity to all blocks)
+      group.update(delta)
+
+      // Check if group should disband (any block colliding)
+      let shouldDisband = false
+      for (const block of group.getBlocks()) {
+        const collision = this.gridManager.checkCollision(block)
+        if (collision.collided) {
+          shouldDisband = true
+          break
+        }
+      }
+
+      if (shouldDisband) {
+        // Disband group - place all blocks individually
+        for (const block of group.getBlocks()) {
+          const collision = this.gridManager.checkCollision(block)
+          if (collision.collided) {
+            this.gridManager.placeBlock(block, collision.restColumn, collision.restRow)
+            blocksPlaced = true
+          } else {
+            // Block hasn't collided yet, let it fall independently
+            block.setVelocity(block.velocityX, block.velocityY)
+          }
+        }
+        groupsToRemove.push(group)
+      }
+    }
+
+    // Update individual moving blocks (not in groups)
+    const movingBlocks = this.gridManager.getMovingBlocks()
     for (const block of movingBlocks) {
+      // Skip blocks that are in a group
+      if (this.gridManager.getBlockGroup(block)) {
+        continue
+      }
+
       // Check if block is above screen and should be removed
-      // Do this BEFORE updating to avoid drawing ghost graphics
       if (block.isAboveScreen()) {
         blocksToRemove.push(block)
-        continue // Skip update for blocks that will be removed
+        continue
+      }
+
+      // Check if this falling block should join a group in the same column
+      // (Iteration 6: falling blocks join groups)
+      let joinedGroup = false
+      for (const group of groups) {
+        // Check if any block in the group is in the same column
+        for (const groupBlock of group.getBlocks()) {
+          if (groupBlock.column === block.column) {
+            // Check if the falling block is close enough to join
+            const distance = Math.abs(block.y - groupBlock.y)
+            if (distance < GridManager.ROW_HEIGHT * 2) {
+              // Find where this block would be positioned in the group
+              const targetY = group.findClosestStackPosition(block)
+
+              // Only join if it won't cause overlap
+              if (targetY !== null && !group.wouldOverlap(block, targetY)) {
+                group.addBlock(block)
+                joinedGroup = true
+                break
+              }
+            }
+          }
+        }
+        if (joinedGroup) break
+      }
+
+      if (joinedGroup) {
+        continue // Block is now part of a group, skip individual update
       }
 
       // Update block position (applies gravity and velocity)
@@ -64,23 +136,34 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Remove blocks that went above screen
+    // Remove groups that went fully above screen
+    for (const group of groupsToRemove) {
+      // Remove all blocks in the group
+      for (const block of group.getBlocks()) {
+        if (block.isAboveScreen()) {
+          this.gridManager.removeBlock(block)
+          this.blocksRemoved++
+        }
+      }
+      this.gridManager.removeGroup(group)
+    }
+
+    // Remove individual blocks that went above screen
     for (const block of blocksToRemove) {
       this.gridManager.removeBlock(block)
       this.blocksRemoved++
     }
 
     // Update score display if blocks were removed
-    if (blocksToRemove.length > 0) {
+    if (blocksToRemove.length > 0 || groupsToRemove.length > 0) {
       this.updateScoreDisplay()
     }
 
     // Check for matches after blocks are placed
-    // Matches can trigger at any time per spec
     if (blocksPlaced && this.matchDetector) {
       const matchCount = this.matchDetector.checkAndProcessMatches()
 
-      // If a match was made, cancel any current drag to prevent weird swapping
+      // If a match was made, cancel any current drag
       if (matchCount > 0 && this.inputManager) {
         this.inputManager.cancelDrag()
       }

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { Block, BlockColor } from '../objects/Block';
+import { BlockGroup } from '../objects/BlockGroup';
 
 export class GridManager {
   private scene: Phaser.Scene;
@@ -20,9 +21,13 @@ export class GridManager {
   // All blocks in the game (for easy iteration)
   private blocks: Block[];
 
+  // Active block groups (Iteration 6)
+  private groups: BlockGroup[];
+
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
     this.blocks = [];
+    this.groups = [];
 
     // Initialize empty grid
     this.grid = [];
@@ -168,6 +173,7 @@ export class GridManager {
     // Destroy all blocks
     this.blocks.forEach(block => block.destroy());
     this.blocks = [];
+    this.groups = [];
 
     // Clear grid
     for (let col = 0; col < GridManager.COLUMNS; col++) {
@@ -182,6 +188,42 @@ export class GridManager {
    */
   public getMovingBlocks(): Block[] {
     return this.blocks.filter(block => block.velocityX !== 0 || block.velocityY !== 0);
+  }
+
+  /**
+   * Get all active block groups
+   */
+  public getGroups(): BlockGroup[] {
+    return this.groups.slice();
+  }
+
+  /**
+   * Add a new block group
+   */
+  public addGroup(group: BlockGroup): void {
+    this.groups.push(group);
+  }
+
+  /**
+   * Remove a block group
+   */
+  public removeGroup(group: BlockGroup): void {
+    const index = this.groups.indexOf(group);
+    if (index > -1) {
+      this.groups.splice(index, 1);
+    }
+  }
+
+  /**
+   * Find which group a block belongs to (if any)
+   */
+  public getBlockGroup(block: Block): BlockGroup | null {
+    for (const group of this.groups) {
+      if (group.hasBlock(block)) {
+        return group;
+      }
+    }
+    return null;
   }
 
   /**
