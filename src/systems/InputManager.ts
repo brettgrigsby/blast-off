@@ -1,10 +1,10 @@
 import Phaser from 'phaser';
 import { Block } from '../objects/Block';
-import { GridManager } from './GridManager';
+import { ColumnManager } from './ColumnManager';
 
 export class InputManager {
   private scene: Phaser.Scene;
-  private gridManager: GridManager;
+  private columnManager: ColumnManager;
 
   // Drag state
   private isDragging: boolean = false;
@@ -16,9 +16,9 @@ export class InputManager {
   // Callback for when a swap occurs
   private onSwapCallback?: () => void;
 
-  constructor(scene: Phaser.Scene, gridManager: GridManager, onSwapCallback?: () => void) {
+  constructor(scene: Phaser.Scene, columnManager: ColumnManager, onSwapCallback?: () => void) {
     this.scene = scene;
-    this.gridManager = gridManager;
+    this.columnManager = columnManager;
     this.onSwapCallback = onSwapCallback;
 
     // Create graphics for selection highlight
@@ -52,7 +52,7 @@ export class InputManager {
 
     if (clickedBlock) {
       // Allow dragging blocks in grid OR blocks in a group (Iteration 6)
-      const blockGroup = this.gridManager.getBlockGroup(clickedBlock);
+      const blockGroup = this.columnManager.getBlockGroup(clickedBlock);
       if (clickedBlock.isInGrid || blockGroup) {
         this.isDragging = true;
         this.selectedBlock = clickedBlock;
@@ -70,14 +70,14 @@ export class InputManager {
 
     // Check if the selected block is still valid for dragging
     // Allow dragging if in grid OR in a group (Iteration 6)
-    const blockGroup = this.gridManager.getBlockGroup(this.selectedBlock);
+    const blockGroup = this.columnManager.getBlockGroup(this.selectedBlock);
     if (!this.selectedBlock.isInGrid && !blockGroup) {
       this.handlePointerUp();
       return;
     }
 
     // Check if pointer is in the same column (using world x coordinates)
-    const COLUMN_TOLERANCE = GridManager.COLUMN_WIDTH * 0.6;
+    const COLUMN_TOLERANCE = ColumnManager.COLUMN_WIDTH * 0.6;
     const xDistance = Math.abs(pointer.x - this.selectedBlock.x);
     if (xDistance > COLUMN_TOLERANCE) {
       return; // Can only drag within the same column
@@ -85,7 +85,7 @@ export class InputManager {
 
     // Determine drag direction based on world coordinates
     const yDifference = pointer.y - this.selectedBlock.y;
-    if (Math.abs(yDifference) < GridManager.ROW_HEIGHT * 0.2) {
+    if (Math.abs(yDifference) < ColumnManager.ROW_HEIGHT * 0.2) {
       return; // Not dragging far enough yet
     }
 
@@ -140,17 +140,17 @@ export class InputManager {
 
   private getBlockAtPosition(x: number, y: number): Block | null {
     // Convert pixel position to grid position
-    const gridPos = this.gridManager.pixelToGrid(x, y);
+    const gridPos = this.columnManager.pixelToGrid(x, y);
 
     // First check if there's a block in the grid at this position
-    const gridBlock = this.gridManager.getBlock(gridPos.column, gridPos.row);
+    const gridBlock = this.columnManager.getBlock(gridPos.column, gridPos.row);
     if (gridBlock) {
       return gridBlock;
     }
 
     // Also check all blocks (including those in groups) by actual position
-    const allBlocks = this.gridManager.getAllBlocks();
-    const BLOCK_SIZE = 80; // GridManager.ROW_HEIGHT
+    const allBlocks = this.columnManager.getAllBlocks();
+    const BLOCK_SIZE = 80; // ColumnManager.ROW_HEIGHT
 
     for (const block of allBlocks) {
       // Check if click is within this block's bounds
@@ -176,10 +176,10 @@ export class InputManager {
    * @returns The adjacent block in that direction, or null if none found
    */
   private findAdjacentBlock(block: Block, direction: 1 | -1): Block | null {
-    const allBlocks = this.gridManager.getAllBlocks();
-    const blockGroup = this.gridManager.getBlockGroup(block);
-    const ADJACENCY_THRESHOLD = GridManager.ROW_HEIGHT * 1.2; // Allow some tolerance
-    const COLUMN_TOLERANCE = GridManager.COLUMN_WIDTH * 0.3; // Blocks must be in roughly the same column
+    const allBlocks = this.columnManager.getAllBlocks();
+    const blockGroup = this.columnManager.getBlockGroup(block);
+    const ADJACENCY_THRESHOLD = ColumnManager.ROW_HEIGHT * 1.2; // Allow some tolerance
+    const COLUMN_TOLERANCE = ColumnManager.COLUMN_WIDTH * 0.3; // Blocks must be in roughly the same column
 
     let closestBlock: Block | null = null;
     let closestDistance = Infinity;
@@ -215,7 +215,7 @@ export class InputManager {
 
       // If blocks are in a group, they must be in the same group
       if (blockGroup) {
-        const otherBlockGroup = this.gridManager.getBlockGroup(otherBlock);
+        const otherBlockGroup = this.columnManager.getBlockGroup(otherBlock);
         if (otherBlockGroup !== blockGroup) {
           continue;
         }
@@ -234,7 +234,7 @@ export class InputManager {
   private canSwap(block: Block, targetBlock: Block): boolean {
     // Check if blocks are physically adjacent (using world coordinates)
     const yDistance = Math.abs(targetBlock.y - block.y);
-    const ADJACENCY_THRESHOLD = GridManager.ROW_HEIGHT * 1.3;
+    const ADJACENCY_THRESHOLD = ColumnManager.ROW_HEIGHT * 1.3;
 
     if (yDistance > ADJACENCY_THRESHOLD) {
       return false; // Not adjacent
@@ -242,15 +242,15 @@ export class InputManager {
 
     // Check if blocks are in roughly the same column (using world coordinates)
     const xDistance = Math.abs(targetBlock.x - block.x);
-    const COLUMN_TOLERANCE = GridManager.COLUMN_WIDTH * 0.4;
+    const COLUMN_TOLERANCE = ColumnManager.COLUMN_WIDTH * 0.4;
 
     if (xDistance > COLUMN_TOLERANCE) {
       return false; // Not in same column
     }
 
     // Allow swapping with blocks in grid OR blocks in the same group (Iteration 6)
-    const selectedBlockGroup = this.gridManager.getBlockGroup(block);
-    const targetBlockGroup = this.gridManager.getBlockGroup(targetBlock);
+    const selectedBlockGroup = this.columnManager.getBlockGroup(block);
+    const targetBlockGroup = this.columnManager.getBlockGroup(targetBlock);
 
     // If both blocks are in the same group, allow swap
     if (selectedBlockGroup && selectedBlockGroup === targetBlockGroup) {
@@ -271,38 +271,26 @@ export class InputManager {
     const targetRow = targetBlock.row;
     const targetColumn = targetBlock.column;
 
-    // Check if blocks are in a group
-    const blockGroup = this.gridManager.getBlockGroup(block);
-
     // Store current positions for swapping
     const blockTargetX = targetBlock.x;
     const blockTargetY = targetBlock.y;
     const targetBlockX = block.x;
     const targetBlockY = block.y;
 
-    if (blockGroup) {
-      // Swapping within a group - just swap positions, don't touch grid
-      block.setGridPosition(targetColumn, targetRow);
-      block.setPosition(blockTargetX, blockTargetY);
+    // Remove blocks from columns before changing positions
+    this.columnManager.removeBlockFromColumn(block);
+    this.columnManager.removeBlockFromColumn(targetBlock);
 
-      targetBlock.setGridPosition(currentColumn, currentRow);
-      targetBlock.setPosition(targetBlockX, targetBlockY);
-    } else {
-      // Normal swap in grid - use grid positions
-      const blockTargetPos = this.gridManager.gridToPixel(currentColumn, targetRow);
-      const targetBlockPos = this.gridManager.gridToPixel(currentColumn, currentRow);
+    // Swap positions
+    block.setGridPosition(targetColumn, targetRow);
+    block.setPosition(blockTargetX, blockTargetY);
 
-      this.gridManager.setBlock(currentColumn, currentRow, targetBlock);
-      this.gridManager.setBlock(currentColumn, targetRow, block);
+    targetBlock.setGridPosition(currentColumn, currentRow);
+    targetBlock.setPosition(targetBlockX, targetBlockY);
 
-      // Update the selected block's position and grid coordinates
-      block.setGridPosition(currentColumn, targetRow);
-      block.setPosition(blockTargetPos.x, blockTargetPos.y);
-
-      // Update target block to the current position
-      targetBlock.setGridPosition(currentColumn, currentRow);
-      targetBlock.setPosition(targetBlockPos.x, targetBlockPos.y);
-    }
+    // Re-add blocks to columns so they get sorted by new Y position
+    this.columnManager.addBlockToColumn(block);
+    this.columnManager.addBlockToColumn(targetBlock);
   }
 
   private drawSelectionHighlight(block: Block): void {
@@ -311,19 +299,19 @@ export class InputManager {
     // Draw a glowing border around the selected block
     this.selectionGraphics.lineStyle(4, 0xffffff, 1);
     this.selectionGraphics.strokeRect(
-      block.x - GridManager.ROW_HEIGHT / 2,
-      block.y - GridManager.ROW_HEIGHT / 2,
-      GridManager.COLUMN_WIDTH,
-      GridManager.ROW_HEIGHT
+      block.x - ColumnManager.ROW_HEIGHT / 2,
+      block.y - ColumnManager.ROW_HEIGHT / 2,
+      ColumnManager.COLUMN_WIDTH,
+      ColumnManager.ROW_HEIGHT
     );
 
     // Add a subtle glow effect
     this.selectionGraphics.lineStyle(2, 0xffffff, 0.5);
     this.selectionGraphics.strokeRect(
-      block.x - GridManager.ROW_HEIGHT / 2 - 2,
-      block.y - GridManager.ROW_HEIGHT / 2 - 2,
-      GridManager.COLUMN_WIDTH + 4,
-      GridManager.ROW_HEIGHT + 4
+      block.x - ColumnManager.ROW_HEIGHT / 2 - 2,
+      block.y - ColumnManager.ROW_HEIGHT / 2 - 2,
+      ColumnManager.COLUMN_WIDTH + 4,
+      ColumnManager.ROW_HEIGHT + 4
     );
   }
 

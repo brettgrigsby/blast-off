@@ -1,19 +1,18 @@
 import Phaser from 'phaser';
 import { Block } from '../objects/Block';
-import { GridManager } from './GridManager';
+import { ColumnManager } from './ColumnManager';
 
 export class BlockSpawner {
   private scene: Phaser.Scene;
-  private gridManager: GridManager;
+  private columnManager: ColumnManager;
   private spawnTimer: Phaser.Time.TimerEvent | null = null;
 
   // Spawn configuration
   private static readonly SPAWN_RATE = 1000; // milliseconds (1 block per second)
-  private static readonly SPAWN_ROW = -1; // Start above the visible grid
 
-  constructor(scene: Phaser.Scene, gridManager: GridManager) {
+  constructor(scene: Phaser.Scene, columnManager: ColumnManager) {
     this.scene = scene;
-    this.gridManager = gridManager;
+    this.columnManager = columnManager;
   }
 
   /**
@@ -47,14 +46,17 @@ export class BlockSpawner {
    */
   private spawnBlock(): void {
     // Random column selection
-    const column = Math.floor(Math.random() * GridManager.COLUMNS);
+    const column = Math.floor(Math.random() * ColumnManager.COLUMNS);
 
     // Random color
     const color = Block.getRandomColor();
 
+    // Calculate Y position above the grid (one block height above grid offset)
+    const spawnY = ColumnManager.GRID_OFFSET_Y - ColumnManager.ROW_HEIGHT;
+
     // Create block above grid with initial downward velocity
     // addBlock handles everything - creation, velocity, and tracking
-    this.gridManager.addBlock(column, BlockSpawner.SPAWN_ROW, color, { x: 0, y: 1000 });
+    this.columnManager.addBlock(column, spawnY, color, { x: 0, y: 1000 });
   }
 
   /**

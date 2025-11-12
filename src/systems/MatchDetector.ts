@@ -1,6 +1,6 @@
 import { Block, BlockColor } from '../objects/Block';
 import { BlockGroup } from '../objects/BlockGroup';
-import { GridManager } from './GridManager';
+import { ColumnManager } from './ColumnManager';
 
 export interface MatchResult {
   blocks: Block[];
@@ -8,10 +8,10 @@ export interface MatchResult {
 }
 
 export class MatchDetector {
-  private gridManager: GridManager;
+  private columnManager: ColumnManager;
 
-  constructor(gridManager: GridManager) {
-    this.gridManager = gridManager;
+  constructor(columnManager: ColumnManager) {
+    this.columnManager = columnManager;
   }
 
   /**
@@ -37,13 +37,13 @@ export class MatchDetector {
    * Detect horizontal matches (scan each row)
    */
   private detectHorizontalMatches(matchedBlocks: Set<Block>): void {
-    for (let row = 0; row < GridManager.ROWS; row++) {
-      const rowBlocks = this.gridManager.getRow(row);
+    for (let row = 0; row < ColumnManager.ROWS; row++) {
+      const rowBlocks = this.columnManager.getRow(row);
 
       let currentColor: BlockColor | null = null;
       let consecutiveBlocks: Block[] = [];
 
-      for (let col = 0; col < GridManager.COLUMNS; col++) {
+      for (let col = 0; col < ColumnManager.COLUMNS; col++) {
         const block = rowBlocks[col];
 
         // Skip empty spaces or grey blocks
@@ -83,17 +83,24 @@ export class MatchDetector {
    * Detect vertical matches (scan each column)
    */
   private detectVerticalMatches(matchedBlocks: Set<Block>): void {
-    for (let col = 0; col < GridManager.COLUMNS; col++) {
-      const columnBlocks = this.gridManager.getColumn(col);
+    for (let col = 0; col < ColumnManager.COLUMNS; col++) {
+      const column = this.columnManager.getColumn(col);
+      if (!column) continue;
+
+      const columnBlocks = column.getBlocksAtRest();
+
+      if (columnBlocks.length < 3) {
+        continue; // Not enough blocks for a match
+      }
 
       let currentColor: BlockColor | null = null;
       let consecutiveBlocks: Block[] = [];
 
-      for (let row = 0; row < GridManager.ROWS; row++) {
-        const block = columnBlocks[row];
+      for (let i = 0; i < columnBlocks.length; i++) {
+        const block = columnBlocks[i];
 
-        // Skip empty spaces or grey blocks
-        if (!block || block.isGrey()) {
+        // Skip grey blocks
+        if (block.isGrey()) {
           // Check if we have a match in progress
           if (consecutiveBlocks.length >= 3) {
             consecutiveBlocks.forEach(b => matchedBlocks.add(b));
@@ -105,8 +112,26 @@ export class MatchDetector {
         }
 
         // Check if this block continues the sequence
-        if (block.color === currentColor) {
-          consecutiveBlocks.push(block);
+        if (block.color === currentColor && consecutiveBlocks.length > 0) {
+          // Verify blocks are physically adjacent (consecutive by position)
+          const previousBlock = consecutiveBlocks[consecutiveBlocks.length - 1];
+          const spacing = block.y - previousBlock.y;
+          const expectedSpacing = ColumnManager.ROW_HEIGHT;
+
+          // Blocks should be exactly ROW_HEIGHT apart (within 1px for floating point precision)
+          const isConsecutive = Math.abs(spacing - expectedSpacing) <= 1;
+
+          if (isConsecutive) {
+            consecutiveBlocks.push(block);
+          } else {
+            // Gap in sequence - check if previous sequence was a match
+            if (consecutiveBlocks.length >= 3) {
+              consecutiveBlocks.forEach(b => matchedBlocks.add(b));
+            }
+            // Start new sequence
+            currentColor = block.color;
+            consecutiveBlocks = [block];
+          }
         } else {
           // New color - check if previous sequence was a match
           if (consecutiveBlocks.length >= 3) {
@@ -141,18 +166,19 @@ export class MatchDetector {
         // Convert matched block to grey
         matchedBlock.setColor(BlockColor.GREY);
 
-        const column = matchedBlock.column;
-        if (!columnBlocks.has(column)) {
-          columnBlocks.set(column, new Set());
+        const columnIndex = matchedBlock.column;
+        if (!columnBlocks.has(columnIndex)) {
+          columnBlocks.set(columnIndex, new Set());
         }
-        columnBlocks.get(column)!.add(matchedBlock);
+        columnBlocks.get(columnIndex)!.add(matchedBlock);
 
         // Find all blocks above this matched block in the same column
-        for (let row = matchedBlock.row - 1; row >= 0; row--) {
-          const blockAbove = this.gridManager.getBlock(column, row);
-          if (blockAbove) {
-            columnBlocks.get(column)!.add(blockAbove);
-          }
+        const column = this.columnManager.getColumn(columnIndex);
+        if (column) {
+          const blocksAbove = column.getBlocksAbove(matchedBlock.y);
+          blocksAbove.forEach(blockAbove => {
+            columnBlocks.get(columnIndex)!.add(blockAbove);
+          });
         }
       });
 
@@ -171,9 +197,9 @@ export class MatchDetector {
           const groupBlocks: Block[] = [];
 
           blocksInColumn.forEach(block => {
-            // Remove block from grid if it's in the grid
+            // Remove block from column if it's in the grid
             if (block.isInGrid) {
-              this.gridManager.setBlock(block.column, block.row, null);
+              this.columnManager.removeBlockFromColumn(block);
               block.isInGrid = false;
             }
 
@@ -184,7 +210,7 @@ export class MatchDetector {
 
           // Create and add the group
           const group = new BlockGroup(groupBlocks);
-          this.gridManager.addGroup(group);
+          this.columnManager.addGroup(group);
         }
       });
 
@@ -199,7 +225,7 @@ export class MatchDetector {
    */
   private findExistingGroup(blocks: Block[]): BlockGroup | null {
     for (const block of blocks) {
-      const group = this.gridManager.getBlockGroup(block);
+      const group = this.columnManager.getBlockGroup(block);
       if (group) {
         return group;
       }

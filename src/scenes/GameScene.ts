@@ -1,6 +1,6 @@
 import type { FarcadeSDK, GameInfo } from '@farcade/game-sdk'
 import GameSettings from '../config/GameSettings'
-import { GridManager } from '../systems/GridManager'
+import { ColumnManager } from '../systems/ColumnManager'
 import { Block } from '../objects/Block'
 import { BlockSpawner } from '../systems/BlockSpawner'
 import { InputManager } from '../systems/InputManager'
@@ -14,7 +14,7 @@ declare global {
 
 export class GameScene extends Phaser.Scene {
   private isMultiplayer: boolean = false
-  private gridManager!: GridManager
+  private columnManager!: ColumnManager
   private gridLinesGraphics!: Phaser.GameObjects.Graphics
   private blockSpawner!: BlockSpawner
   private inputManager!: InputManager
@@ -37,7 +37,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
-    if (!this.gridManager) return
+    if (!this.columnManager) return
 
     const blocksToRemove: Block[] = []
     const groupsToRemove: any[] = []
@@ -45,7 +45,7 @@ export class GameScene extends Phaser.Scene {
     let blocksRemovedThisFrame = false
 
     // Update groups (Iteration 6)
-    const groups = this.gridManager.getGroups()
+    const groups = this.columnManager.getGroups()
     for (const group of groups) {
       // Check if group is fully above screen -> remove entire group
       if (group.isFullyAboveScreen()) {
@@ -60,7 +60,7 @@ export class GameScene extends Phaser.Scene {
       for (const block of group.getBlocks()) {
         if (block.isAboveScreen()) {
           group.removeBlock(block)
-          this.gridManager.removeBlock(block)
+          this.columnManager.removeBlock(block)
           this.blocksRemoved++
           blocksRemovedThisFrame = true
         }
@@ -75,7 +75,7 @@ export class GameScene extends Phaser.Scene {
       // Check if group should disband (any block colliding)
       let shouldDisband = false
       for (const block of group.getBlocks()) {
-        const collision = this.gridManager.checkCollision(block)
+        const collision = this.columnManager.checkCollision(block)
         if (collision.collided) {
           shouldDisband = true
           break
@@ -85,9 +85,9 @@ export class GameScene extends Phaser.Scene {
       if (shouldDisband) {
         // Disband group - place all blocks individually
         for (const block of group.getBlocks()) {
-          const collision = this.gridManager.checkCollision(block)
+          const collision = this.columnManager.checkCollision(block)
           if (collision.collided) {
-            this.gridManager.placeBlock(block, collision.restColumn, collision.restRow)
+            this.columnManager.placeBlock(block, collision.restColumn, collision.restY)
             blocksPlaced = true
           } else {
             // Block hasn't collided yet, let it fall independently
@@ -99,10 +99,10 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Update individual moving blocks (not in groups)
-    const movingBlocks = this.gridManager.getMovingBlocks()
+    const movingBlocks = this.columnManager.getMovingBlocks()
     for (const block of movingBlocks) {
       // Skip blocks that are in a group
-      if (this.gridManager.getBlockGroup(block)) {
+      if (this.columnManager.getBlockGroup(block)) {
         continue
       }
 
@@ -121,7 +121,7 @@ export class GameScene extends Phaser.Scene {
           if (groupBlock.column === block.column) {
             // Check if the falling block is close enough to join
             const distance = Math.abs(block.y - groupBlock.y)
-            if (distance < GridManager.ROW_HEIGHT * 2) {
+            if (distance < ColumnManager.ROW_HEIGHT * 2) {
               // Find where this block would be positioned in the group
               const targetY = group.findClosestStackPosition(block)
 
@@ -145,10 +145,10 @@ export class GameScene extends Phaser.Scene {
       block.update(delta)
 
       // Check for collision (only for blocks moving downward)
-      const collision = this.gridManager.checkCollision(block)
+      const collision = this.columnManager.checkCollision(block)
       if (collision.collided) {
-        // Place the block in the grid at rest position
-        this.gridManager.placeBlock(block, collision.restColumn, collision.restRow)
+        // Place the block at rest position (using Y position)
+        this.columnManager.placeBlock(block, collision.restColumn, collision.restY)
         blocksPlaced = true
       }
     }
@@ -162,20 +162,20 @@ export class GameScene extends Phaser.Scene {
       for (const block of group.getBlocks()) {
         if (isFullyAbove) {
           // Group went fully above screen - remove all blocks
-          this.gridManager.removeBlock(block)
+          this.columnManager.removeBlock(block)
           this.blocksRemoved++
         } else if (block.isAboveScreen()) {
           // Group disbanded but some blocks are above - remove only those
-          this.gridManager.removeBlock(block)
+          this.columnManager.removeBlock(block)
           this.blocksRemoved++
         }
       }
-      this.gridManager.removeGroup(group)
+      this.columnManager.removeGroup(group)
     }
 
     // Remove individual blocks that went above screen
     for (const block of blocksToRemove) {
-      this.gridManager.removeBlock(block)
+      this.columnManager.removeBlock(block)
       this.blocksRemoved++
     }
 
@@ -238,27 +238,27 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createGameElements(): void {
-    // Initialize grid system
-    this.gridManager = new GridManager(this)
+    // Initialize column system
+    this.columnManager = new ColumnManager(this)
 
     // Create graphics for grid lines (debug visualization)
     this.gridLinesGraphics = this.add.graphics()
-    this.gridManager.drawGridLines(this.gridLinesGraphics)
+    this.columnManager.drawGridLines(this.gridLinesGraphics)
 
     // Initialize match detector (Iteration 4)
-    this.matchDetector = new MatchDetector(this.gridManager)
+    this.matchDetector = new MatchDetector(this.columnManager)
 
     // Populate grid with random colored blocks for testing (Iteration 1)
     // Comment this out for Iteration 2 to see spawning
     // this.populateTestGrid()
 
     // Initialize and start block spawner (Iteration 2)
-    this.blockSpawner = new BlockSpawner(this, this.gridManager)
+    this.blockSpawner = new BlockSpawner(this, this.columnManager)
     this.blockSpawner.start()
 
     // Initialize input manager (Iteration 3)
     // Pass callback to check for matches after swaps (Iteration 4)
-    this.inputManager = new InputManager(this, this.gridManager, () => {
+    this.inputManager = new InputManager(this, this.columnManager, () => {
       this.matchDetector.checkAndProcessMatches()
     })
 
@@ -293,10 +293,11 @@ export class GameScene extends Phaser.Scene {
    */
   private populateTestGrid(): void {
     // Fill bottom half of grid with random blocks (rows 6-11)
-    for (let row = 6; row < GridManager.ROWS; row++) {
-      for (let col = 0; col < GridManager.COLUMNS; col++) {
+    for (let row = 6; row < ColumnManager.ROWS; row++) {
+      for (let col = 0; col < ColumnManager.COLUMNS; col++) {
         const color = Block.getRandomColor()
-        this.gridManager.addBlock(col, row, color)
+        const { y } = this.columnManager.gridToPixel(col, row)
+        this.columnManager.addBlock(col, y, color)
       }
     }
   }
