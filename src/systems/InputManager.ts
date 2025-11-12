@@ -65,6 +65,13 @@ export class InputManager {
       return;
     }
 
+    // Check if the selected block is still in the grid (not launched/moving)
+    // If it got launched by a match, cancel the drag
+    if (!this.selectedBlock.isInGrid) {
+      this.handlePointerUp();
+      return;
+    }
+
     // Get the grid position where the pointer currently is
     const pointerGridPos = this.gridManager.pixelToGrid(pointer.x, pointer.y);
     const pointerRow = pointerGridPos.row;
@@ -100,13 +107,20 @@ export class InputManager {
     if (crossedThreshold && this.canSwap(this.selectedBlock, adjacentRow)) {
       this.swapBlocks(this.selectedBlock, adjacentRow);
 
-      // Update selection highlight
-      this.drawSelectionHighlight(this.selectedBlock);
-
       // Trigger callback (for match detection)
       if (this.onSwapCallback) {
         this.onSwapCallback();
       }
+
+      // Check if the block is still in the grid after the callback
+      // (it might have been launched by a match)
+      if (!this.selectedBlock.isInGrid) {
+        this.handlePointerUp();
+        return;
+      }
+
+      // Update selection highlight
+      this.drawSelectionHighlight(this.selectedBlock);
     }
   }
 
@@ -204,6 +218,13 @@ export class InputManager {
       GridManager.COLUMN_WIDTH + 4,
       GridManager.ROW_HEIGHT + 4
     );
+  }
+
+  /**
+   * Cancel the current drag operation (e.g., when a match is made)
+   */
+  public cancelDrag(): void {
+    this.handlePointerUp();
   }
 
   /**

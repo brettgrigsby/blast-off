@@ -78,7 +78,12 @@ export class GameScene extends Phaser.Scene {
     // Check for matches after blocks are placed
     // Matches can trigger at any time per spec
     if (blocksPlaced && this.matchDetector) {
-      this.matchDetector.checkAndProcessMatches()
+      const matchCount = this.matchDetector.checkAndProcessMatches()
+
+      // If a match was made, cancel any current drag to prevent weird swapping
+      if (matchCount > 0 && this.inputManager) {
+        this.inputManager.cancelDrag()
+      }
     }
   }
 
