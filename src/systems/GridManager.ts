@@ -1,0 +1,279 @@
+import Phaser from 'phaser';
+import { Block, BlockColor } from '../objects/Block';
+
+export class GridManager {
+  private scene: Phaser.Scene;
+
+  // Grid dimensions
+  public static readonly COLUMNS = 9;
+  public static readonly ROWS = 12;
+  public static readonly COLUMN_WIDTH = 80; // 720px / 9 columns
+  public static readonly ROW_HEIGHT = 80; // Square cells to match blocks
+
+  // Grid positioning - center the 9×12 board (720×960) on the 720×1080 canvas
+  public static readonly GRID_OFFSET_X = 0;
+  public static readonly GRID_OFFSET_Y = 60; // (1080 - 960) / 2 = 60px top margin
+
+  // Grid storage: [column][row] -> Block
+  private grid: (Block | null)[][];
+
+  // All blocks in the game (for easy iteration)
+  private blocks: Block[];
+
+  // Falling blocks (not yet in grid)
+  private fallingBlocks: Block[];
+
+  constructor(scene: Phaser.Scene) {
+    this.scene = scene;
+    this.blocks = [];
+    this.fallingBlocks = [];
+
+    // Initialize empty grid
+    this.grid = [];
+    for (let col = 0; col < GridManager.COLUMNS; col++) {
+      this.grid[col] = [];
+      for (let row = 0; row < GridManager.ROWS; row++) {
+        this.grid[col][row] = null;
+      }
+    }
+  }
+
+  /**
+   * Convert grid coordinates to pixel coordinates (center of cell)
+   */
+  public gridToPixel(column: number, row: number): { x: number; y: number } {
+    return {
+      x: GridManager.GRID_OFFSET_X + column * GridManager.COLUMN_WIDTH + GridManager.COLUMN_WIDTH / 2,
+      y: GridManager.GRID_OFFSET_Y + row * GridManager.ROW_HEIGHT + GridManager.ROW_HEIGHT / 2,
+    };
+  }
+
+  /**
+   * Convert pixel coordinates to grid coordinates
+   */
+  public pixelToGrid(x: number, y: number): { column: number; row: number } {
+    return {
+      column: Math.floor((x - GridManager.GRID_OFFSET_X) / GridManager.COLUMN_WIDTH),
+      row: Math.floor((y - GridManager.GRID_OFFSET_Y) / GridManager.ROW_HEIGHT),
+    };
+  }
+
+  /**
+   * Check if grid coordinates are within bounds
+   */
+  public isInBounds(column: number, row: number): boolean {
+    return (
+      column >= 0 &&
+      column < GridManager.COLUMNS &&
+      row >= 0 &&
+      row < GridManager.ROWS
+    );
+  }
+
+  /**
+   * Get block at specific grid position
+   */
+  public getBlock(column: number, row: number): Block | null {
+    if (!this.isInBounds(column, row)) {
+      return null;
+    }
+    return this.grid[column][row];
+  }
+
+  /**
+   * Set block at specific grid position
+   */
+  public setBlock(column: number, row: number, block: Block | null): void {
+    if (!this.isInBounds(column, row)) {
+      return;
+    }
+    this.grid[column][row] = block;
+  }
+
+  /**
+   * Add a new block to the grid
+   */
+  public addBlock(column: number, row: number, color: BlockColor): Block {
+    const { x, y } = this.gridToPixel(column, row);
+    const block = new Block(this.scene, column, row, x, y, color);
+    block.isInGrid = true;
+
+    this.grid[column][row] = block;
+    this.blocks.push(block);
+
+    return block;
+  }
+
+  /**
+   * Remove a block from the grid
+   */
+  public removeBlock(block: Block): void {
+    // Remove from grid
+    if (this.isInBounds(block.column, block.row)) {
+      this.grid[block.column][block.row] = null;
+    }
+
+    // Remove from blocks array
+    const index = this.blocks.indexOf(block);
+    if (index > -1) {
+      this.blocks.splice(index, 1);
+    }
+
+    // Destroy the block
+    block.destroy();
+  }
+
+  /**
+   * Get all blocks in a specific column
+   */
+  public getColumn(column: number): (Block | null)[] {
+    if (column < 0 || column >= GridManager.COLUMNS) {
+      return [];
+    }
+    return this.grid[column].slice();
+  }
+
+  /**
+   * Get all blocks in a specific row
+   */
+  public getRow(row: number): (Block | null)[] {
+    if (row < 0 || row >= GridManager.ROWS) {
+      return [];
+    }
+
+    const rowBlocks: (Block | null)[] = [];
+    for (let col = 0; col < GridManager.COLUMNS; col++) {
+      rowBlocks.push(this.grid[col][row]);
+    }
+    return rowBlocks;
+  }
+
+  /**
+   * Get all blocks in the game
+   */
+  public getAllBlocks(): Block[] {
+    return this.blocks.slice();
+  }
+
+  /**
+   * Clear all blocks from the grid
+   */
+  public clear(): void {
+    // Destroy all blocks
+    this.blocks.forEach(block => block.destroy());
+    this.blocks = [];
+    this.fallingBlocks = [];
+
+    // Clear grid
+    for (let col = 0; col < GridManager.COLUMNS; col++) {
+      for (let row = 0; row < GridManager.ROWS; row++) {
+        this.grid[col][row] = null;
+      }
+    }
+  }
+
+  /**
+   * Add a falling block (not yet in grid)
+   */
+  public addFallingBlock(block: Block): void {
+    this.fallingBlocks.push(block);
+    this.blocks.push(block);
+  }
+
+  /**
+   * Get all falling blocks
+   */
+  public getFallingBlocks(): Block[] {
+    return this.fallingBlocks.slice();
+  }
+
+  /**
+   * Check if a block at a Y position would collide with the bottom or another block
+   */
+  public checkCollision(block: Block): { collided: boolean; restRow: number } {
+    // Check bottom boundary
+    const bottomY = GridManager.GRID_OFFSET_Y + GridManager.ROWS * GridManager.ROW_HEIGHT;
+    if (block.y + GridManager.ROW_HEIGHT / 2 >= bottomY) {
+      return { collided: true, restRow: GridManager.ROWS - 1 };
+    }
+
+    // Check collision with blocks in the grid
+    // Find which row this block is in
+    const currentGridPos = this.pixelToGrid(block.x, block.y);
+
+    // Check if there's a block directly below in the same column
+    for (let row = currentGridPos.row + 1; row < GridManager.ROWS; row++) {
+      const blockBelow = this.grid[block.column][row];
+      if (blockBelow && blockBelow.isInGrid) {
+        // Check if we're touching it
+        const blockBelowTop = blockBelow.y - GridManager.ROW_HEIGHT / 2;
+        const currentBlockBottom = block.y + GridManager.ROW_HEIGHT / 2;
+
+        if (currentBlockBottom >= blockBelowTop) {
+          return { collided: true, restRow: row - 1 };
+        }
+      }
+    }
+
+    return { collided: false, restRow: -1 };
+  }
+
+  /**
+   * Place a falling block into the grid at its current position
+   */
+  public placeFallingBlock(block: Block): void {
+    // Remove from falling blocks
+    const index = this.fallingBlocks.indexOf(block);
+    if (index > -1) {
+      this.fallingBlocks.splice(index, 1);
+    }
+
+    // Find the grid position for this block
+    const gridPos = this.pixelToGrid(block.x, block.y);
+    block.setGridPosition(gridPos.column, gridPos.row);
+
+    // Snap to grid position
+    const { x, y } = this.gridToPixel(gridPos.column, gridPos.row);
+    block.setPosition(x, y);
+    block.setVelocity(0, 0);
+    block.isInGrid = true;
+
+    // Add to grid
+    this.grid[gridPos.column][gridPos.row] = block;
+  }
+
+  /**
+   * Debug: Draw grid lines
+   */
+  public drawGridLines(graphics: Phaser.GameObjects.Graphics): void {
+    graphics.clear();
+    graphics.lineStyle(1, 0x333333, 0.5);
+
+    const gridWidth = GridManager.COLUMNS * GridManager.COLUMN_WIDTH;
+    const gridHeight = GridManager.ROWS * GridManager.ROW_HEIGHT;
+
+    // Vertical lines
+    for (let col = 0; col <= GridManager.COLUMNS; col++) {
+      const x = GridManager.GRID_OFFSET_X + col * GridManager.COLUMN_WIDTH;
+      graphics.lineBetween(
+        x,
+        GridManager.GRID_OFFSET_Y,
+        x,
+        GridManager.GRID_OFFSET_Y + gridHeight
+      );
+    }
+
+    // Horizontal lines
+    for (let row = 0; row <= GridManager.ROWS; row++) {
+      const y = GridManager.GRID_OFFSET_Y + row * GridManager.ROW_HEIGHT;
+      graphics.lineBetween(
+        GridManager.GRID_OFFSET_X,
+        y,
+        GridManager.GRID_OFFSET_X + gridWidth,
+        y
+      );
+    }
+
+    graphics.strokePath();
+  }
+}

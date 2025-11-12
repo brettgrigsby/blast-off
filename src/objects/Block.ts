@@ -1,0 +1,159 @@
+import Phaser from 'phaser';
+
+export enum BlockColor {
+  RED = 0xd17878,
+  YELLOW = 0xe6d49a,
+  BLUE = 0x7da3d9,
+  GREEN = 0x8fd98f,
+  PURPLE = 0xb08fd9,
+  GREY = 0x808080,
+}
+
+export const PLAYABLE_COLORS = [
+  BlockColor.RED,
+  BlockColor.YELLOW,
+  BlockColor.BLUE,
+  BlockColor.GREEN,
+  BlockColor.PURPLE,
+];
+
+export class Block {
+  public column: number;
+  public row: number;
+  public x: number;
+  public y: number;
+  public color: BlockColor;
+  public graphics: Phaser.GameObjects.Graphics;
+  private scene: Phaser.Scene;
+
+  // Movement properties
+  public velocityX: number = 0;
+  public velocityY: number = 0;
+  public isInGrid: boolean = false; // True when resting in grid, false when falling/launching
+
+  // Visual constants
+  private static readonly BLOCK_WIDTH = 80;
+  private static readonly BLOCK_HEIGHT = 80;
+  private static readonly BORDER_WIDTH = 3;
+  private static readonly BORDER_COLOR = 0x000000;
+
+  constructor(
+    scene: Phaser.Scene,
+    column: number,
+    row: number,
+    x: number,
+    y: number,
+    color: BlockColor
+  ) {
+    this.scene = scene;
+    this.column = column;
+    this.row = row;
+    this.x = x;
+    this.y = y;
+    this.color = color;
+
+    // Create graphics object for visual representation
+    this.graphics = scene.add.graphics();
+    this.draw();
+  }
+
+  /**
+   * Draw the block with border
+   */
+  private draw(): void {
+    this.graphics.clear();
+
+    // Draw border
+    this.graphics.fillStyle(Block.BORDER_COLOR, 1);
+    this.graphics.fillRect(
+      this.x - Block.BLOCK_WIDTH / 2,
+      this.y - Block.BLOCK_HEIGHT / 2,
+      Block.BLOCK_WIDTH,
+      Block.BLOCK_HEIGHT
+    );
+
+    // Draw main colored block
+    this.graphics.fillStyle(this.color, 1);
+    this.graphics.fillRect(
+      this.x - Block.BLOCK_WIDTH / 2 + Block.BORDER_WIDTH,
+      this.y - Block.BLOCK_HEIGHT / 2 + Block.BORDER_WIDTH,
+      Block.BLOCK_WIDTH - Block.BORDER_WIDTH * 2,
+      Block.BLOCK_HEIGHT - Block.BORDER_WIDTH * 2
+    );
+  }
+
+  /**
+   * Update the block's position and redraw
+   */
+  public setPosition(x: number, y: number): void {
+    this.x = x;
+    this.y = y;
+    this.draw();
+  }
+
+  /**
+   * Update the block's grid position
+   */
+  public setGridPosition(column: number, row: number): void {
+    this.column = column;
+    this.row = row;
+  }
+
+  /**
+   * Change the block's color (e.g., when matched, turn grey)
+   */
+  public setColor(color: BlockColor): void {
+    this.color = color;
+    this.draw();
+  }
+
+  /**
+   * Check if this block is grey (matched/consumed)
+   */
+  public isGrey(): boolean {
+    return this.color === BlockColor.GREY;
+  }
+
+  /**
+   * Set the block's velocity
+   */
+  public setVelocity(velocityX: number, velocityY: number): void {
+    this.velocityX = velocityX;
+    this.velocityY = velocityY;
+  }
+
+  /**
+   * Update the block's position based on velocity (called each frame)
+   * @param delta Time elapsed since last frame in milliseconds
+   */
+  public update(delta: number): void {
+    if (this.velocityX === 0 && this.velocityY === 0) {
+      return; // No movement
+    }
+
+    // Convert delta from milliseconds to seconds
+    const deltaSeconds = delta / 1000;
+
+    // Update position based on velocity
+    this.x += this.velocityX * deltaSeconds;
+    this.y += this.velocityY * deltaSeconds;
+
+    // Redraw at new position
+    this.draw();
+  }
+
+  /**
+   * Get a random playable color (not grey)
+   */
+  public static getRandomColor(): BlockColor {
+    const randomIndex = Math.floor(Math.random() * PLAYABLE_COLORS.length);
+    return PLAYABLE_COLORS[randomIndex];
+  }
+
+  /**
+   * Destroy the block and clean up graphics
+   */
+  public destroy(): void {
+    this.graphics.destroy();
+  }
+}
