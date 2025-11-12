@@ -52,19 +52,9 @@ export class BlockSpawner {
     // Random color
     const color = Block.getRandomColor();
 
-    // Get pixel position at top of column (above visible grid)
-    const { x } = this.gridManager.gridToPixel(column, BlockSpawner.SPAWN_ROW);
-    const y = GridManager.GRID_OFFSET_Y + BlockSpawner.SPAWN_ROW * GridManager.ROW_HEIGHT + GridManager.ROW_HEIGHT / 2;
-
-    // Create the block (not in grid yet, it's falling)
-    const block = new Block(this.scene, column, BlockSpawner.SPAWN_ROW, x, y, color);
-
-    // Set initial downward velocity (1000 pixels/second)
-    block.setVelocity(0, 1000);
-    block.isInGrid = false;
-
-    // Add to falling blocks in grid manager
-    this.gridManager.addFallingBlock(block);
+    // Create block above grid with initial downward velocity
+    // addBlock handles everything - creation, velocity, and tracking
+    this.gridManager.addBlock(column, BlockSpawner.SPAWN_ROW, color, { x: 0, y: 1000 });
   }
 
   /**

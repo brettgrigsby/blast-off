@@ -39,37 +39,28 @@ export class GameScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     if (!this.gridManager) return
 
-    // Update falling blocks
-    const fallingBlocks = this.gridManager.getFallingBlocks()
+    // Unified physics update: process all moving blocks the same way
+    const movingBlocks = this.gridManager.getMovingBlocks()
+    const blocksToRemove: Block[] = []
     let blocksPlaced = false
 
-    for (const block of fallingBlocks) {
-      // Update block position based on velocity
-      block.update(delta)
-
-      // Check for collision
-      const collision = this.gridManager.checkCollision(block)
-      if (collision.collided) {
-        // Place the block in the grid
-        this.gridManager.placeFallingBlock(block)
-        blocksPlaced = true
-      }
-    }
-
-    // Update all blocks (including launching ones) (Iteration 5)
-    const allBlocks = this.gridManager.getAllBlocks()
-    const blocksToRemove: Block[] = []
-
-    for (const block of allBlocks) {
-      // Skip blocks that are in the grid (not moving)
-      if (block.isInGrid) continue
-
-      // Update launching blocks
-      block.update(delta)
-
+    for (const block of movingBlocks) {
       // Check if block is above screen and should be removed
+      // Do this BEFORE updating to avoid drawing ghost graphics
       if (block.isAboveScreen()) {
         blocksToRemove.push(block)
+        continue // Skip update for blocks that will be removed
+      }
+
+      // Update block position (applies gravity and velocity)
+      block.update(delta)
+
+      // Check for collision (only for blocks moving downward)
+      const collision = this.gridManager.checkCollision(block)
+      if (collision.collided) {
+        // Place the block in the grid at rest position
+        this.gridManager.placeBlock(block, collision.restColumn, collision.restRow)
+        blocksPlaced = true
       }
     }
 
@@ -84,7 +75,7 @@ export class GameScene extends Phaser.Scene {
       this.updateScoreDisplay()
     }
 
-    // Check for matches after blocks are placed (Iteration 4)
+    // Check for matches after blocks are placed
     // Matches can trigger at any time per spec
     if (blocksPlaced && this.matchDetector) {
       this.matchDetector.checkAndProcessMatches()

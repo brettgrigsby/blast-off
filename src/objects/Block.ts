@@ -29,7 +29,10 @@ export class Block {
   // Movement properties
   public velocityX: number = 0;
   public velocityY: number = 0;
-  public isInGrid: boolean = false; // True when resting in grid, false when falling/launching
+  public isInGrid: boolean = false; // True when block is in the grid array, false otherwise
+
+  // Physics constants
+  public static readonly GRAVITY = 2000; // pixels/second² - downward acceleration
 
   // Visual constants
   private static readonly BLOCK_WIDTH = 80;
@@ -123,16 +126,19 @@ export class Block {
   }
 
   /**
-   * Update the block's position based on velocity (called each frame)
+   * Update the block's position based on velocity and apply gravity (called each frame)
    * @param delta Time elapsed since last frame in milliseconds
    */
   public update(delta: number): void {
-    if (this.velocityX === 0 && this.velocityY === 0) {
-      return; // No movement
-    }
-
     // Convert delta from milliseconds to seconds
     const deltaSeconds = delta / 1000;
+
+    // Apply gravity to all moving blocks (accelerate downward)
+    if (this.velocityX !== 0 || this.velocityY !== 0) {
+      this.velocityY += Block.GRAVITY * deltaSeconds;
+    } else {
+      return; // Block is at rest, no need to update
+    }
 
     // Update position based on velocity
     this.x += this.velocityX * deltaSeconds;
@@ -147,14 +153,14 @@ export class Block {
    * @param matchSize Number of blocks in the match (3, 4, 5+)
    */
   public launch(matchSize: number): void {
-    // Calculate launch velocity based on match size
+    // Calculate launch velocity based on match size (4x stronger than original)
     let launchVelocity: number;
     if (matchSize === 3) {
-      launchVelocity = -400; // Negative = upward
+      launchVelocity = -1600; // Negative = upward
     } else if (matchSize === 4) {
-      launchVelocity = -600;
+      launchVelocity = -2400;
     } else {
-      launchVelocity = -800; // 5 or more
+      launchVelocity = -3200; // 5 or more
     }
 
     this.setVelocity(0, launchVelocity);
@@ -181,6 +187,8 @@ export class Block {
    * Destroy the block and clean up graphics
    */
   public destroy(): void {
+    // Clear graphics before destroying to prevent ghost images
+    this.graphics.clear();
     this.graphics.destroy();
   }
 }

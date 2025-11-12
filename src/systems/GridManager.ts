@@ -20,13 +20,9 @@ export class GridManager {
   // All blocks in the game (for easy iteration)
   private blocks: Block[];
 
-  // Falling blocks (not yet in grid)
-  private fallingBlocks: Block[];
-
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
     this.blocks = [];
-    this.fallingBlocks = [];
 
     // Initialize empty grid
     this.grid = [];
@@ -91,14 +87,24 @@ export class GridManager {
   }
 
   /**
-   * Add a new block to the grid
+   * Add a new block to the grid at a specific position
+   * If row is negative (above grid), block starts falling
    */
-  public addBlock(column: number, row: number, color: BlockColor): Block {
+  public addBlock(column: number, row: number, color: BlockColor, velocity: { x: number, y: number } = { x: 0, y: 0 }): Block {
     const { x, y } = this.gridToPixel(column, row);
     const block = new Block(this.scene, column, row, x, y, color);
-    block.isInGrid = true;
 
-    this.grid[column][row] = block;
+    // Set initial velocity (e.g., for falling blocks)
+    block.setVelocity(velocity.x, velocity.y);
+
+    // Only add to grid if in bounds, otherwise block is in motion
+    if (this.isInBounds(column, row)) {
+      this.grid[column][row] = block;
+      block.isInGrid = true;
+    } else {
+      block.isInGrid = false;
+    }
+
     this.blocks.push(block);
 
     return block;
@@ -162,7 +168,6 @@ export class GridManager {
     // Destroy all blocks
     this.blocks.forEach(block => block.destroy());
     this.blocks = [];
-    this.fallingBlocks = [];
 
     // Clear grid
     for (let col = 0; col < GridManager.COLUMNS; col++) {
@@ -173,73 +178,65 @@ export class GridManager {
   }
 
   /**
-   * Add a falling block (not yet in grid)
+   * Get all blocks that are currently moving (have velocity)
    */
-  public addFallingBlock(block: Block): void {
-    this.fallingBlocks.push(block);
-    this.blocks.push(block);
+  public getMovingBlocks(): Block[] {
+    return this.blocks.filter(block => block.velocityX !== 0 || block.velocityY !== 0);
   }
 
   /**
-   * Get all falling blocks
+   * Check if a moving block collides with the bottom or another block
+   * Works for both downward and upward-then-falling blocks
    */
-  public getFallingBlocks(): Block[] {
-    return this.fallingBlocks.slice();
-  }
+  public checkCollision(block: Block): { collided: boolean; restRow: number; restColumn: number } {
+    // Only check collision for blocks moving downward (positive Y velocity)
+    if (block.velocityY <= 0) {
+      return { collided: false, restRow: -1, restColumn: -1 };
+    }
 
-  /**
-   * Check if a block at a Y position would collide with the bottom or another block
-   */
-  public checkCollision(block: Block): { collided: boolean; restRow: number } {
+    // Get current grid position based on pixel coordinates
+    const currentGridPos = this.pixelToGrid(block.x, block.y);
+    const column = currentGridPos.column;
+
     // Check bottom boundary
     const bottomY = GridManager.GRID_OFFSET_Y + GridManager.ROWS * GridManager.ROW_HEIGHT;
     if (block.y + GridManager.ROW_HEIGHT / 2 >= bottomY) {
-      return { collided: true, restRow: GridManager.ROWS - 1 };
+      return { collided: true, restRow: GridManager.ROWS - 1, restColumn: column };
     }
 
-    // Check collision with blocks in the grid
-    // Find which row this block is in
-    const currentGridPos = this.pixelToGrid(block.x, block.y);
-
-    // Check if there's a block directly below in the same column
+    // Check collision with blocks in the grid (blocks at rest)
+    // Look for the first block below in the same column
     for (let row = currentGridPos.row + 1; row < GridManager.ROWS; row++) {
-      const blockBelow = this.grid[block.column][row];
-      if (blockBelow && blockBelow.isInGrid) {
+      const blockBelow = this.grid[column][row];
+      if (blockBelow && blockBelow.velocityX === 0 && blockBelow.velocityY === 0) {
         // Check if we're touching it
         const blockBelowTop = blockBelow.y - GridManager.ROW_HEIGHT / 2;
         const currentBlockBottom = block.y + GridManager.ROW_HEIGHT / 2;
 
         if (currentBlockBottom >= blockBelowTop) {
-          return { collided: true, restRow: row - 1 };
+          return { collided: true, restRow: row - 1, restColumn: column };
         }
       }
     }
 
-    return { collided: false, restRow: -1 };
+    return { collided: false, restRow: -1, restColumn: -1 };
   }
 
   /**
-   * Place a falling block into the grid at its current position
+   * Place a moving block into the grid at a specific position
    */
-  public placeFallingBlock(block: Block): void {
-    // Remove from falling blocks
-    const index = this.fallingBlocks.indexOf(block);
-    if (index > -1) {
-      this.fallingBlocks.splice(index, 1);
-    }
-
-    // Find the grid position for this block
-    const gridPos = this.pixelToGrid(block.x, block.y);
-    block.setGridPosition(gridPos.column, gridPos.row);
+  public placeBlock(block: Block, column: number, row: number): void {
+    // Update grid position
+    block.setGridPosition(column, row);
 
     // Snap to grid position
-    const { x, y } = this.gridToPixel(gridPos.column, gridPos.row);
+    const { x, y } = this.gridToPixel(column, row);
     block.setPosition(x, y);
     block.setVelocity(0, 0);
     block.isInGrid = true;
 
     // Add to grid
-    this.grid[gridPos.column][gridPos.row] = block;
+    this.grid[column][row] = block;
   }
 
   /**

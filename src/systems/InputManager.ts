@@ -150,6 +150,11 @@ export class InputManager {
       return false;
     }
 
+    // Only allow swapping with blocks that are also at rest in the grid (not moving/falling)
+    if (!targetBlock.isInGrid) {
+      return false;
+    }
+
     return true;
   }
 

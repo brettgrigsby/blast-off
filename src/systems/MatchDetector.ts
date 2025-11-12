@@ -134,12 +134,15 @@ export class MatchDetector {
     if (matchResult.blocks.length > 0) {
       // Track all blocks to launch (matched + blocks above)
       const blocksToLaunch = new Set<Block>();
+      // Track which columns are affected by matches
+      const affectedColumns = new Set<number>();
 
       // Add matched blocks and find all blocks above them
       matchResult.blocks.forEach(matchedBlock => {
         // Convert matched block to grey
         matchedBlock.setColor(BlockColor.GREY);
         blocksToLaunch.add(matchedBlock);
+        affectedColumns.add(matchedBlock.column);
 
         // Find all blocks above this matched block in the same column
         const column = matchedBlock.column;
@@ -151,12 +154,25 @@ export class MatchDetector {
         }
       });
 
-      // Launch all blocks (matched + above)
+      // Also check for any moving blocks in affected columns
+      const allBlocks = this.gridManager.getAllBlocks();
+      allBlocks.forEach(block => {
+        // Include any block in affected columns that's not already added
+        if (affectedColumns.has(block.column) && !block.isInGrid) {
+          blocksToLaunch.add(block);
+        }
+      });
+
+      // Launch all blocks (matched + above + moving in same columns)
       blocksToLaunch.forEach(block => {
-        // Remove block from grid so it becomes a "launching" block
-        this.gridManager.setBlock(block.column, block.row, null);
+        // Remove block from grid if it's in the grid
+        if (block.isInGrid) {
+          this.gridManager.setBlock(block.column, block.row, null);
+          block.isInGrid = false;
+        }
 
         // Launch the block with velocity based on match size
+        // Physics system will handle gravity and re-landing
         block.launch(matchResult.size);
       });
 
