@@ -171,8 +171,8 @@ export class Block {
    * Check if this block is above the screen top boundary
    */
   public isAboveScreen(): boolean {
-    // Block is above screen if its bottom edge is above y=0
-    return this.y < 0;
+    // Block is above screen if it's well past the top (with buffer to keep visible longer)
+    return this.y < -50;
   }
 
   /**

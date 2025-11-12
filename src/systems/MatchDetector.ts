@@ -156,16 +156,8 @@ export class MatchDetector {
         }
       });
 
-      // Also check for any moving blocks in affected columns
-      const allBlocks = this.gridManager.getAllBlocks();
-      allBlocks.forEach(block => {
-        // Include any block in affected columns that's not already in grid
-        if (columnBlocks.has(block.column) && !block.isInGrid) {
-          columnBlocks.get(block.column)!.add(block);
-        }
-      });
-
       // Create groups for each column and launch them
+      // Note: Falling blocks will join groups later when they collide (handled in GameScene)
       columnBlocks.forEach((blocksInColumn, column) => {
         // Check if any of these blocks are already in a group
         const existingGroup = this.findExistingGroup(Array.from(blocksInColumn));

@@ -42,6 +42,7 @@ export class GameScene extends Phaser.Scene {
     const blocksToRemove: Block[] = []
     const groupsToRemove: any[] = []
     let blocksPlaced = false
+    let blocksRemovedThisFrame = false
 
     // Update groups (Iteration 6)
     const groups = this.gridManager.getGroups()
@@ -54,6 +55,22 @@ export class GameScene extends Phaser.Scene {
 
       // Update the group (applies gravity to all blocks)
       group.update(delta)
+
+      // Remove individual blocks from group if they go above screen
+      for (const block of group.getBlocks()) {
+        if (block.isAboveScreen()) {
+          group.removeBlock(block)
+          this.gridManager.removeBlock(block)
+          this.blocksRemoved++
+          blocksRemovedThisFrame = true
+        }
+      }
+
+      // If group is now empty, remove it
+      if (group.isEmpty()) {
+        groupsToRemove.push(group)
+        continue
+      }
 
       // Check if group should disband (any block colliding)
       let shouldDisband = false
@@ -138,9 +155,17 @@ export class GameScene extends Phaser.Scene {
 
     // Remove groups that went fully above screen
     for (const group of groupsToRemove) {
+      // Check if this group is fully above screen (for removal)
+      const isFullyAbove = group.isFullyAboveScreen()
+
       // Remove all blocks in the group
       for (const block of group.getBlocks()) {
-        if (block.isAboveScreen()) {
+        if (isFullyAbove) {
+          // Group went fully above screen - remove all blocks
+          this.gridManager.removeBlock(block)
+          this.blocksRemoved++
+        } else if (block.isAboveScreen()) {
+          // Group disbanded but some blocks are above - remove only those
           this.gridManager.removeBlock(block)
           this.blocksRemoved++
         }
@@ -155,7 +180,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Update score display if blocks were removed
-    if (blocksToRemove.length > 0 || groupsToRemove.length > 0) {
+    if (blocksToRemove.length > 0 || groupsToRemove.length > 0 || blocksRemovedThisFrame) {
       this.updateScoreDisplay()
     }
 
@@ -237,30 +262,14 @@ export class GameScene extends Phaser.Scene {
       this.matchDetector.checkAndProcessMatches()
     })
 
-    // Add game title
-    this.add
-      .text(
-        GameSettings.canvas.width / 2,
-        30,
-        'Blast Off',
-        {
-          fontSize: '48px',
-          color: '#ffffff',
-          fontFamily: 'Arial',
-          fontStyle: 'bold',
-        }
-      )
-      .setOrigin(0.5)
-      .setDepth(1000) // Keep text above blocks
-
-    // Add score counter (Iteration 5)
+    // Add score counter at top center (Iteration 5)
     this.scoreText = this.add
       .text(
         GameSettings.canvas.width / 2,
-        1020,
-        'Blocks Removed: 0',
+        30,
+        '0',
         {
-          fontSize: '32px',
+          fontSize: '48px',
           color: '#ffffff',
           fontFamily: 'Arial',
           fontStyle: 'bold',
@@ -275,7 +284,7 @@ export class GameScene extends Phaser.Scene {
    */
   private updateScoreDisplay(): void {
     if (this.scoreText) {
-      this.scoreText.setText(`Blocks Removed: ${this.blocksRemoved}`)
+      this.scoreText.setText(`${this.blocksRemoved}`)
     }
   }
 
