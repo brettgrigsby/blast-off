@@ -10,9 +10,6 @@ export class InputManager {
   private isDragging: boolean = false;
   private selectedBlock: Block | null = null;
 
-  // Visual feedback
-  private selectionGraphics: Phaser.GameObjects.Graphics;
-
   // Callback for when a swap occurs
   private onSwapCallback?: () => void;
 
@@ -20,10 +17,6 @@ export class InputManager {
     this.scene = scene;
     this.columnManager = columnManager;
     this.onSwapCallback = onSwapCallback;
-
-    // Create graphics for selection highlight
-    this.selectionGraphics = scene.add.graphics();
-    this.selectionGraphics.setDepth(999); // Above blocks but below UI
 
     // Set up input listeners
     this.setupInputListeners();
@@ -57,8 +50,8 @@ export class InputManager {
         this.isDragging = true;
         this.selectedBlock = clickedBlock;
 
-        // Draw selection highlight
-        this.drawSelectionHighlight(clickedBlock);
+        // Mark block as selected (it will render with highlight)
+        clickedBlock.setSelected(true);
       }
     }
   }
@@ -119,9 +112,6 @@ export class InputManager {
         this.handlePointerUp();
         return;
       }
-
-      // Update selection highlight
-      this.drawSelectionHighlight(this.selectedBlock);
     }
   }
 
@@ -130,12 +120,14 @@ export class InputManager {
       return;
     }
 
+    // Clear selection from the block
+    if (this.selectedBlock) {
+      this.selectedBlock.setSelected(false);
+    }
+
     // Stop dragging
     this.isDragging = false;
     this.selectedBlock = null;
-
-    // Clear selection highlight
-    this.selectionGraphics.clear();
   }
 
   private getBlockAtPosition(x: number, y: number): Block | null {
@@ -293,28 +285,6 @@ export class InputManager {
     this.columnManager.addBlockToColumn(targetBlock);
   }
 
-  private drawSelectionHighlight(block: Block): void {
-    this.selectionGraphics.clear();
-
-    // Draw a glowing border around the selected block
-    this.selectionGraphics.lineStyle(4, 0xffffff, 1);
-    this.selectionGraphics.strokeRect(
-      block.x - ColumnManager.ROW_HEIGHT / 2,
-      block.y - ColumnManager.ROW_HEIGHT / 2,
-      ColumnManager.COLUMN_WIDTH,
-      ColumnManager.ROW_HEIGHT
-    );
-
-    // Add a subtle glow effect
-    this.selectionGraphics.lineStyle(2, 0xffffff, 0.5);
-    this.selectionGraphics.strokeRect(
-      block.x - ColumnManager.ROW_HEIGHT / 2 - 2,
-      block.y - ColumnManager.ROW_HEIGHT / 2 - 2,
-      ColumnManager.COLUMN_WIDTH + 4,
-      ColumnManager.ROW_HEIGHT + 4
-    );
-  }
-
   /**
    * Cancel the current drag operation (e.g., when a match is made)
    */
@@ -336,6 +306,6 @@ export class InputManager {
    * Clean up
    */
   public destroy(): void {
-    this.selectionGraphics.destroy();
+    // No resources to clean up
   }
 }

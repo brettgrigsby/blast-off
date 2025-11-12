@@ -31,6 +31,9 @@ export class Block {
   public velocityY: number = 0;
   public isInGrid: boolean = false; // True when block is in the grid array, false otherwise
 
+  // Visual state
+  public selected: boolean = false; // True when block is selected by player
+
   // Physics constants
   public static readonly GRAVITY = 2000; // pixels/second² - downward acceleration
 
@@ -61,10 +64,31 @@ export class Block {
   }
 
   /**
-   * Draw the block with border
+   * Draw the block with border and optional selection highlight
    */
   private draw(): void {
     this.graphics.clear();
+
+    // Draw selection highlight if selected
+    if (this.selected) {
+      // Draw outer glow
+      this.graphics.lineStyle(2, 0xffffff, 0.5);
+      this.graphics.strokeRect(
+        this.x - Block.BLOCK_WIDTH / 2 - 2,
+        this.y - Block.BLOCK_HEIGHT / 2 - 2,
+        Block.BLOCK_WIDTH + 4,
+        Block.BLOCK_HEIGHT + 4
+      );
+
+      // Draw main selection border
+      this.graphics.lineStyle(4, 0xffffff, 1);
+      this.graphics.strokeRect(
+        this.x - Block.BLOCK_WIDTH / 2,
+        this.y - Block.BLOCK_HEIGHT / 2,
+        Block.BLOCK_WIDTH,
+        Block.BLOCK_HEIGHT
+      );
+    }
 
     // Draw border
     this.graphics.fillStyle(Block.BORDER_COLOR, 1);
@@ -107,6 +131,22 @@ export class Block {
    */
   public setColor(color: BlockColor): void {
     this.color = color;
+    this.draw();
+  }
+
+  /**
+   * Set the block's selected state and redraw
+   */
+  public setSelected(selected: boolean): void {
+    this.selected = selected;
+
+    // Set depth to render selected block above all others
+    if (selected) {
+      this.graphics.setDepth(100); // Above normal blocks (default depth is 0)
+    } else {
+      this.graphics.setDepth(0); // Reset to normal depth
+    }
+
     this.draw();
   }
 
