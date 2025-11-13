@@ -17,7 +17,7 @@ export class BlockGroup {
   private static readonly MASS_GRAVITY_FACTOR = 75; // Additional gravity per block in group (px/s²)
 
   // Merge velocity bonus - applied when groups collide and merge
-  private static readonly MERGE_VELOCITY_PER_BLOCK = -150; // Upward velocity bonus per block in merged group (px/s)
+  private static readonly MERGE_VELOCITY_BONUS = -650; // Upward velocity bonus per block in merged group (px/s)
 
   constructor(blocks: Block[] = []) {
     this.blocks = new Set(blocks);
@@ -30,14 +30,18 @@ export class BlockGroup {
 
   /**
    * Add a block to this group with proper positioning
+   * @param block The block to add
+   * @param skipRepositioning If true, keep block's current position (used for merging groups in motion)
    */
-  public addBlock(block: Block): void {
-    // Find the proper stack position for this block
-    const targetY = this.findClosestStackPosition(block);
+  public addBlock(block: Block, skipRepositioning: boolean = false): void {
+    if (!skipRepositioning) {
+      // Find the proper stack position for this block
+      const targetY = this.findClosestStackPosition(block);
 
-    if (targetY !== null) {
-      // Snap block to proper position to maintain spacing
-      block.setPosition(block.x, targetY);
+      if (targetY !== null) {
+        // Snap block to proper position to maintain spacing
+        block.setPosition(block.x, targetY);
+      }
     }
 
     this.blocks.add(block);
@@ -125,6 +129,31 @@ export class BlockGroup {
     }
 
     return false; // No overlap
+  }
+
+  /**
+   * Realign blocks to fix Y-position drift from floating-point calculations
+   * Snaps all blocks to a unified grid based on the topmost block
+   */
+  private realignBlocks(): void {
+    const ROW_HEIGHT = 80; // GridManager.ROW_HEIGHT
+
+    const allBlocks = Array.from(this.blocks);
+    if (allBlocks.length === 0) return;
+
+    // Find the topmost block as the grid reference point
+    const topBlock = allBlocks.reduce((min, block) => block.y < min.y ? block : min);
+    const referenceY = topBlock.y;
+
+    // Snap all blocks to the unified grid
+    for (const block of allBlocks) {
+      // Calculate which grid row this block belongs to
+      const distanceFromReference = block.y - referenceY;
+      const rowIndex = Math.round(distanceFromReference / ROW_HEIGHT);
+      const snappedY = referenceY + (rowIndex * ROW_HEIGHT);
+
+      block.setPosition(block.x, snappedY);
+    }
   }
 
   /**
@@ -255,8 +284,9 @@ export class BlockGroup {
    */
   public mergeWith(otherGroup: BlockGroup): void {
     // Add all blocks from the other group
+    // Skip repositioning to maintain blocks' relative positions in motion
     otherGroup.getBlocks().forEach(block => {
-      this.addBlock(block);
+      this.addBlock(block, true);
     });
 
     // Combine velocities (average based on block count)
@@ -268,13 +298,16 @@ export class BlockGroup {
       const otherVelocity = otherGroup.getVelocity();
       this.velocityY = (this.velocityY * thisSize + otherVelocity * otherSize) / totalSize;
 
-      // Apply upward velocity bonus based on merged group size
-      const mergeBonus = totalSize * BlockGroup.MERGE_VELOCITY_PER_BLOCK;
+      // Apply upward velocity bonus
+      const mergeBonus = BlockGroup.MERGE_VELOCITY_BONUS;
       this.velocityY += mergeBonus;
 
       // Update all blocks with the new combined velocity
       this.setVelocity(this.velocityY);
     }
+
+    // Fix any Y-position drift from floating-point calculations
+    this.realignBlocks();
   }
 
   /**
