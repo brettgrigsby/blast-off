@@ -5,6 +5,7 @@ import { Block } from '../objects/Block'
 import { BlockSpawner } from '../systems/BlockSpawner'
 import { InputManager } from '../systems/InputManager'
 import { MatchDetector } from '../systems/MatchDetector'
+import { ColorAssigner } from '../systems/ColorAssigner'
 
 declare global {
   interface Window {
@@ -19,10 +20,14 @@ export class GameScene extends Phaser.Scene {
   private blockSpawner!: BlockSpawner
   private inputManager!: InputManager
   private matchDetector!: MatchDetector
+  private colorAssigner!: ColorAssigner
 
   // Score tracking (Iteration 5)
   private blocksRemoved: number = 0
   private scoreText!: Phaser.GameObjects.Text
+
+  // Grey block recovery tracking
+  private blocksReadyToRecover: Block[] = []
 
   constructor() {
     super({ key: 'GameScene' })
@@ -215,6 +220,47 @@ export class GameScene extends Phaser.Scene {
         this.inputManager.cancelDrag()
       }
     }
+
+    // Grey block recovery system: Convert grey blocks back to colored after 2 seconds at rest
+    const allBlocks = this.columnManager.getAllBlocks()
+
+    for (const block of allBlocks) {
+      if (block.isGrey()) {
+        const isAtRest = block.isAtRest()
+
+        // Check if block just stopped moving (transition from moving to at rest)
+        if (isAtRest && block.wasMovingLastFrame) {
+          // Block just came to rest - start recovery timer
+          if (!block.greyRecoveryTimer) {
+            block.greyRecoveryTimer = this.time.addEvent({
+              delay: Block.GREY_RECOVERY_DELAY,
+              callback: () => {
+                // Mark block as ready for recovery (actual color assigned in batch below)
+                this.blocksReadyToRecover.push(block)
+                block.greyRecoveryTimer = null
+              },
+              callbackScope: this,
+              loop: false
+            })
+          }
+        }
+
+        // If block starts moving again, cancel the timer
+        if (!isAtRest && block.greyRecoveryTimer) {
+          block.greyRecoveryTimer.remove()
+          block.greyRecoveryTimer = null
+        }
+
+        // Update motion state for next frame
+        block.wasMovingLastFrame = !isAtRest
+      }
+    }
+
+    // Batch assign colors to all blocks that recovered this frame
+    if (this.blocksReadyToRecover.length > 0 && this.colorAssigner) {
+      this.colorAssigner.assignColorsToBlocks(this.blocksReadyToRecover)
+      this.blocksReadyToRecover = [] // Clear for next frame
+    }
   }
 
   private async initializeSDK(): Promise<void> {
@@ -269,6 +315,9 @@ export class GameScene extends Phaser.Scene {
 
     // Initialize match detector (Iteration 4)
     this.matchDetector = new MatchDetector(this.columnManager)
+
+    // Initialize color assigner for smart grey block recovery
+    this.colorAssigner = new ColorAssigner(this.columnManager)
 
     // Populate grid with random colored blocks for testing (Iteration 1)
     // Comment this out for Iteration 2 to see spawning

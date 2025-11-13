@@ -34,8 +34,15 @@ export class Block {
   // Visual state
   public selected: boolean = false; // True when block is selected by player
 
+  // Grey block recovery system
+  public greyRecoveryTimer: Phaser.Time.TimerEvent | null = null;
+  public wasMovingLastFrame: boolean = false;
+
   // Physics constants
   public static readonly GRAVITY = 400; // pixels/second² - downward acceleration
+
+  // Grey block recovery constant
+  public static readonly GREY_RECOVERY_DELAY = 2000; // 2 seconds in milliseconds
 
   // Visual constants
   private static readonly BLOCK_WIDTH = 80;
@@ -130,6 +137,18 @@ export class Block {
    * Change the block's color (e.g., when matched, turn grey)
    */
   public setColor(color: BlockColor): void {
+    // If block is becoming grey, reset recovery timer and motion tracking
+    if (color === BlockColor.GREY && this.greyRecoveryTimer) {
+      this.greyRecoveryTimer.remove();
+      this.greyRecoveryTimer = null;
+    }
+
+    // If block is recovering from grey to a color, ensure timer is cleaned up
+    if (this.color === BlockColor.GREY && color !== BlockColor.GREY && this.greyRecoveryTimer) {
+      this.greyRecoveryTimer.remove();
+      this.greyRecoveryTimer = null;
+    }
+
     this.color = color;
     this.draw();
   }
@@ -155,6 +174,13 @@ export class Block {
    */
   public isGrey(): boolean {
     return this.color === BlockColor.GREY;
+  }
+
+  /**
+   * Check if this block is at rest (not moving)
+   */
+  public isAtRest(): boolean {
+    return this.velocityX === 0 && this.velocityY === 0;
   }
 
   /**
@@ -220,6 +246,12 @@ export class Block {
    * Destroy the block and clean up graphics
    */
   public destroy(): void {
+    // Clean up grey recovery timer if active
+    if (this.greyRecoveryTimer) {
+      this.greyRecoveryTimer.remove();
+      this.greyRecoveryTimer = null;
+    }
+
     // Clear graphics before destroying to prevent ghost images
     this.graphics.clear();
     this.graphics.destroy();
