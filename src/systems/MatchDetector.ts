@@ -239,6 +239,177 @@ export class MatchDetector {
   }
 
   /**
+   * Check for matches within a specific BlockGroup
+   * Used to detect matches while blocks are in motion
+   * Returns number of blocks matched (for score tracking)
+   */
+  public checkMatchesInGroup(group: BlockGroup): number {
+    const blocks = group.getBlocks();
+    if (blocks.length < 3) {
+      return 0; // Not enough blocks for a match
+    }
+
+    const matchedBlocks = new Set<Block>();
+
+    // Check horizontal matches using physical positions
+    this.detectHorizontalMatchesInBlocks(blocks, matchedBlocks);
+
+    // Check vertical matches using physical positions
+    this.detectVerticalMatchesInBlocks(blocks, matchedBlocks);
+
+    if (matchedBlocks.size > 0) {
+      // Convert matched blocks to grey
+      matchedBlocks.forEach(block => {
+        block.setColor(BlockColor.GREY);
+      });
+
+      // Add upward velocity to the group based on match size
+      const launchVelocity = this.getLaunchVelocity(matchedBlocks.size);
+      group.addVelocity(0, launchVelocity);
+
+      return matchedBlocks.size;
+    }
+
+    return 0;
+  }
+
+  /**
+   * Detect horizontal matches in a set of blocks using physical positions
+   */
+  private detectHorizontalMatchesInBlocks(blocks: Block[], matchedBlocks: Set<Block>): void {
+    // Group blocks by row (based on physical Y position)
+    const rowMap = new Map<number, Block[]>();
+    const ROW_HEIGHT = ColumnManager.ROW_HEIGHT;
+    const ROW_TOLERANCE = ROW_HEIGHT / 4; // 25% tolerance for row alignment
+
+    blocks.forEach(block => {
+      if (block.isGrey()) return;
+
+      // Round Y position to nearest row
+      const rowIndex = Math.round(block.y / ROW_HEIGHT);
+      const rowY = rowIndex * ROW_HEIGHT;
+
+      // Check if block is close enough to this row
+      if (Math.abs(block.y - rowY) <= ROW_TOLERANCE) {
+        if (!rowMap.has(rowIndex)) {
+          rowMap.set(rowIndex, []);
+        }
+        rowMap.get(rowIndex)!.push(block);
+      }
+    });
+
+    // Check each row for matches
+    rowMap.forEach(rowBlocks => {
+      // Sort by X position (column)
+      rowBlocks.sort((a, b) => a.column - b.column);
+
+      let currentColor: BlockColor | null = null;
+      let consecutiveBlocks: Block[] = [];
+
+      rowBlocks.forEach((block, index) => {
+        if (block.isGrey()) {
+          if (consecutiveBlocks.length >= 3) {
+            consecutiveBlocks.forEach(b => matchedBlocks.add(b));
+          }
+          currentColor = null;
+          consecutiveBlocks = [];
+          return;
+        }
+
+        // Check if this block is adjacent to the previous one (same or next column)
+        const isAdjacent = consecutiveBlocks.length === 0 ||
+          (block.column === consecutiveBlocks[consecutiveBlocks.length - 1].column + 1);
+
+        if (block.color === currentColor && isAdjacent) {
+          consecutiveBlocks.push(block);
+        } else {
+          if (consecutiveBlocks.length >= 3) {
+            consecutiveBlocks.forEach(b => matchedBlocks.add(b));
+          }
+          currentColor = block.color;
+          consecutiveBlocks = [block];
+        }
+      });
+
+      // Check final sequence
+      if (consecutiveBlocks.length >= 3) {
+        consecutiveBlocks.forEach(b => matchedBlocks.add(b));
+      }
+    });
+  }
+
+  /**
+   * Detect vertical matches in a set of blocks using physical positions
+   */
+  private detectVerticalMatchesInBlocks(blocks: Block[], matchedBlocks: Set<Block>): void {
+    // Group blocks by column
+    const columnMap = new Map<number, Block[]>();
+
+    blocks.forEach(block => {
+      if (block.isGrey()) return;
+
+      if (!columnMap.has(block.column)) {
+        columnMap.set(block.column, []);
+      }
+      columnMap.get(block.column)!.push(block);
+    });
+
+    // Check each column for matches
+    columnMap.forEach(columnBlocks => {
+      if (columnBlocks.length < 3) return;
+
+      // Sort by Y position (top to bottom)
+      columnBlocks.sort((a, b) => a.y - b.y);
+
+      let currentColor: BlockColor | null = null;
+      let consecutiveBlocks: Block[] = [];
+
+      columnBlocks.forEach(block => {
+        if (block.isGrey()) {
+          if (consecutiveBlocks.length >= 3) {
+            consecutiveBlocks.forEach(b => matchedBlocks.add(b));
+          }
+          currentColor = null;
+          consecutiveBlocks = [];
+          return;
+        }
+
+        // Check if this block continues the sequence
+        if (block.color === currentColor && consecutiveBlocks.length > 0) {
+          // Verify blocks are physically adjacent
+          const previousBlock = consecutiveBlocks[consecutiveBlocks.length - 1];
+          const spacing = block.y - previousBlock.y;
+          const expectedSpacing = ColumnManager.ROW_HEIGHT;
+
+          // Blocks should be approximately ROW_HEIGHT apart
+          const isConsecutive = Math.abs(spacing - expectedSpacing) <= expectedSpacing * 0.25; // 25% tolerance
+
+          if (isConsecutive) {
+            consecutiveBlocks.push(block);
+          } else {
+            if (consecutiveBlocks.length >= 3) {
+              consecutiveBlocks.forEach(b => matchedBlocks.add(b));
+            }
+            currentColor = block.color;
+            consecutiveBlocks = [block];
+          }
+        } else {
+          if (consecutiveBlocks.length >= 3) {
+            consecutiveBlocks.forEach(b => matchedBlocks.add(b));
+          }
+          currentColor = block.color;
+          consecutiveBlocks = [block];
+        }
+      });
+
+      // Check final sequence
+      if (consecutiveBlocks.length >= 3) {
+        consecutiveBlocks.forEach(b => matchedBlocks.add(b));
+      }
+    });
+  }
+
+  /**
    * Get launch velocity for a given match size
    */
   private getLaunchVelocity(matchSize: number): number {

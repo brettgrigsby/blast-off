@@ -56,6 +56,11 @@ export class GameScene extends Phaser.Scene {
       // Update the group (applies gravity to all blocks)
       group.update(delta)
 
+      // Check for matches within the moving group
+      if (this.matchDetector) {
+        this.matchDetector.checkMatchesInGroup(group)
+      }
+
       // Remove individual blocks from group if they go above screen
       for (const block of group.getBlocks()) {
         if (block.isAboveScreen()) {
@@ -252,6 +257,10 @@ export class GameScene extends Phaser.Scene {
     // Comment this out for Iteration 2 to see spawning
     // this.populateTestGrid()
 
+    // ===== TEMPORARY: DEV HELPER - START WITH 3 BLOCKS PER COLUMN =====
+    this.populateStartingBlocks()
+    // ===== END TEMPORARY =====
+
     // Initialize and start block spawner (Iteration 2)
     this.blockSpawner = new BlockSpawner(this, this.columnManager)
     this.blockSpawner.start()
@@ -295,6 +304,24 @@ export class GameScene extends Phaser.Scene {
     // Fill bottom half of grid with random blocks (rows 6-11)
     for (let row = 6; row < ColumnManager.ROWS; row++) {
       for (let col = 0; col < ColumnManager.COLUMNS; col++) {
+        const color = Block.getRandomColor()
+        const { y } = this.columnManager.gridToPixel(col, row)
+        this.columnManager.addBlock(col, y, color)
+      }
+    }
+  }
+
+  /**
+   * ===== TEMPORARY: DEV HELPER =====
+   * Start the game with 3 random blocks in each column at the bottom.
+   * This makes testing easier by not having to wait for blocks to spawn.
+   * TODO: Remove this before production release
+   * ===== END TEMPORARY =====
+   */
+  private populateStartingBlocks(): void {
+    // Add 3 blocks to each column at the bottom (rows 9, 10, 11)
+    for (let col = 0; col < ColumnManager.COLUMNS; col++) {
+      for (let row = ColumnManager.ROWS - 3; row < ColumnManager.ROWS; row++) {
         const color = Block.getRandomColor()
         const { y } = this.columnManager.gridToPixel(col, row)
         this.columnManager.addBlock(col, y, color)
