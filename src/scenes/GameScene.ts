@@ -335,6 +335,13 @@ export class GameScene extends Phaser.Scene {
     // Pass callback to check for matches after swaps (Iteration 4)
     this.inputManager = new InputManager(this, this.columnManager, () => {
       this.matchDetector.checkAndProcessMatches()
+
+      // Also check matches in moving groups immediately after swap
+      // This prevents delay when creating matches within existing groups
+      const groups = this.columnManager.getGroups()
+      for (const group of groups) {
+        this.matchDetector.checkMatchesInGroup(group)
+      }
     })
 
     // Add score counter at top center (Iteration 5)
