@@ -35,7 +35,7 @@ export class Block {
   public selected: boolean = false; // True when block is selected by player
 
   // Physics constants
-  public static readonly GRAVITY = 2000; // pixels/second² - downward acceleration
+  public static readonly GRAVITY = 400; // pixels/second² - downward acceleration
 
   // Visual constants
   private static readonly BLOCK_WIDTH = 80;
@@ -193,15 +193,8 @@ export class Block {
    * @param matchSize Number of blocks in the match (3, 4, 5+)
    */
   public launch(matchSize: number): void {
-    // Calculate launch velocity based on match size (4x stronger than original)
-    let launchVelocity: number;
-    if (matchSize === 3) {
-      launchVelocity = -1600; // Negative = upward
-    } else if (matchSize === 4) {
-      launchVelocity = -2400;
-    } else {
-      launchVelocity = -3200; // 5 or more
-    }
+    // Calculate launch velocity: each matched block contributes -300 pixels/second
+    const launchVelocity = matchSize * -300; // Negative = upward
 
     this.setVelocity(0, launchVelocity);
     this.isInGrid = false; // No longer in grid when launching

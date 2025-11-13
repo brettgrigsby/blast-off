@@ -11,11 +11,11 @@ export class BlockGroup {
 
   // Descent configuration
   private static readonly DESCENT_VELOCITY = 100; // pixels/second downward
-  private static readonly MAX_DESCENT_VELOCITY = 200; // Maximum downward velocity for groups (much slower than new blocks at 1000 px/s)
+  private static readonly MAX_DESCENT_VELOCITY = 100; // Maximum downward velocity for groups (much slower than new blocks at 1000 px/s)
 
   // Gravity configuration - scales with group size
-  private static readonly BASE_GRAVITY = 700; // Base gravity affecting all groups (px/s²)
-  private static readonly MASS_GRAVITY_FACTOR = 350; // Additional gravity per block in group (px/s²)
+  private static readonly BASE_GRAVITY = 150; // Base gravity affecting all groups (px/s²)
+  private static readonly MASS_GRAVITY_FACTOR = 75; // Additional gravity per block in group (px/s²)
 
   constructor(blocks: Block[] = []) {
     this.blocks = new Set(blocks);

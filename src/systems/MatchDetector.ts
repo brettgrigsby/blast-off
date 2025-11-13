@@ -242,12 +242,6 @@ export class MatchDetector {
    * Get launch velocity for a given match size
    */
   private getLaunchVelocity(matchSize: number): number {
-    if (matchSize === 3) {
-      return -1600;
-    } else if (matchSize === 4) {
-      return -2400;
-    } else {
-      return -3200;
-    }
+    return matchSize * -300;
   }
 }
