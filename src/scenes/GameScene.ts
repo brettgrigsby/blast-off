@@ -34,7 +34,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload(): void {
-    // Load assets here
+    // Load flame sprite sheet
+    // The sprite sheet is 60px wide x 20px tall, with 6 frames of 10x20 each
+    this.load.spritesheet('flame', 'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/burning_loop_4-QL08GwOBzclITwWLDdZNG1G3QY8ZAb.webp?DW7A', {
+      frameWidth: 10,
+      frameHeight: 20
+    });
   }
 
   create(): void {
@@ -112,6 +117,11 @@ export class GameScene extends Phaser.Scene {
       if (shouldDisband) {
         // Disband group - place all blocks individually
         for (const block of group.getBlocks()) {
+          // Hide flames when group disbands
+          if (block.isOriginalMatchBlock) {
+            block.hideFlame()
+          }
+
           const collision = this.columnManager.checkCollision(block)
           if (collision.collided) {
             this.columnManager.placeBlock(block, collision.restColumn, collision.restY)
@@ -306,6 +316,20 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createGameElements(): void {
+    // Create flame animation if sprite sheet loaded
+    if (this.textures.exists('flame')) {
+      const texture = this.textures.get('flame');
+
+      if (texture.frameTotal > 1) {
+        this.anims.create({
+          key: 'flame-animation',
+          frames: this.anims.generateFrameNumbers('flame', { start: 0, end: texture.frameTotal - 1 }),
+          frameRate: 18,
+          repeat: -1
+        });
+      }
+    }
+
     // Initialize column system
     this.columnManager = new ColumnManager(this)
 

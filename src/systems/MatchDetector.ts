@@ -166,6 +166,9 @@ export class MatchDetector {
         // Convert matched block to grey
         matchedBlock.setColor(BlockColor.GREY);
 
+        // Show flame sprite for this matched block (original match)
+        matchedBlock.showFlame();
+
         const columnIndex = matchedBlock.column;
         if (!columnBlocks.has(columnIndex)) {
           columnBlocks.set(columnIndex, new Set());

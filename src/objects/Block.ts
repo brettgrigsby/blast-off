@@ -37,6 +37,10 @@ export class Block {
   public greyRecoveryTimer: Phaser.Time.TimerEvent | null = null;
   public wasMovingLastFrame: boolean = false;
 
+  // Flame sprite for original match blocks
+  public flameSprite: Phaser.GameObjects.Sprite | null = null;
+  public isOriginalMatchBlock: boolean = false;
+
   // Physics constants
   public static readonly GRAVITY = 400; // pixels/second² - downward acceleration
 
@@ -122,6 +126,11 @@ export class Block {
     this.x = x;
     this.y = y;
     this.draw();
+
+    // Update flame sprite position if it exists
+    if (this.flameSprite) {
+      this.flameSprite.setPosition(x, y + Block.BLOCK_HEIGHT / 2 + 30);
+    }
   }
 
   /**
@@ -232,6 +241,46 @@ export class Block {
   }
 
   /**
+   * Show flame sprite under this block (for original match blocks)
+   */
+  public showFlame(): void {
+    // Only create flame if sprite sheet is loaded and animation exists
+    if (!this.flameSprite && this.scene.textures.exists('flame') && this.scene.anims.exists('flame-animation')) {
+      try {
+        // Create sprite with explicit frame 0
+        // Position flame below the block so it shoots out from the bottom
+        this.flameSprite = this.scene.add.sprite(
+          this.x,
+          this.y + Block.BLOCK_HEIGHT / 2 + 30, // Position below the block
+          'flame',
+          0  // Start with frame 0
+        );
+        this.flameSprite.setDepth(-1); // Render below blocks
+        this.flameSprite.setScale(8); // Scale up the flame (doubled from 4 to 8)
+        this.flameSprite.play('flame-animation');
+      } catch (error) {
+        console.error('Failed to create flame sprite:', error);
+        if (this.flameSprite) {
+          this.flameSprite.destroy();
+          this.flameSprite = null;
+        }
+      }
+    }
+    this.isOriginalMatchBlock = true;
+  }
+
+  /**
+   * Hide and destroy flame sprite
+   */
+  public hideFlame(): void {
+    if (this.flameSprite) {
+      this.flameSprite.destroy();
+      this.flameSprite = null;
+    }
+    this.isOriginalMatchBlock = false;
+  }
+
+  /**
    * Get a random playable color (not grey)
    */
   public static getRandomColor(): BlockColor {
@@ -247,6 +296,12 @@ export class Block {
     if (this.greyRecoveryTimer) {
       this.greyRecoveryTimer.remove();
       this.greyRecoveryTimer = null;
+    }
+
+    // Clean up flame sprite if active
+    if (this.flameSprite) {
+      this.flameSprite.destroy();
+      this.flameSprite = null;
     }
 
     // Clear graphics before destroying to prevent ghost images
