@@ -13,6 +13,10 @@ export class BlockGroup {
   private static readonly DESCENT_VELOCITY = 100; // pixels/second downward
   private static readonly MAX_DESCENT_VELOCITY = 200; // Maximum downward velocity for groups (much slower than new blocks at 1000 px/s)
 
+  // Gravity configuration - scales with group size
+  private static readonly BASE_GRAVITY = 700; // Base gravity affecting all groups (px/s²)
+  private static readonly MASS_GRAVITY_FACTOR = 350; // Additional gravity per block in group (px/s²)
+
   constructor(blocks: Block[] = []) {
     this.blocks = new Set(blocks);
 
@@ -195,8 +199,9 @@ export class BlockGroup {
   public update(delta: number): void {
     const deltaSeconds = delta / 1000;
 
-    // Apply gravity to the group
-    this.velocityY += Block.GRAVITY * deltaSeconds;
+    // Apply gravity to the group - scales with group size (mass)
+    const effectiveGravity = BlockGroup.BASE_GRAVITY + (this.blocks.size * BlockGroup.MASS_GRAVITY_FACTOR);
+    this.velocityY += effectiveGravity * deltaSeconds;
 
     // Cap downward velocity for descending groups (don't interfere with upward launches)
     // This prevents groups from falling as fast as new blocks
@@ -207,9 +212,12 @@ export class BlockGroup {
     // Update velocity for all blocks
     this.setVelocity(this.velocityX, this.velocityY);
 
-    // Update each block's position
+    // Update each block's position as part of the rigid group
+    // Don't call block.update() as that would apply individual gravity
     this.blocks.forEach(block => {
-      block.update(delta);
+      const newX = block.x + this.velocityX * deltaSeconds;
+      const newY = block.y + this.velocityY * deltaSeconds;
+      block.setPosition(newX, newY);
     });
   }
 

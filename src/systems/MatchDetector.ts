@@ -182,37 +182,42 @@ export class MatchDetector {
         }
       });
 
-      // Create groups for each column and launch them
-      // Note: Falling blocks will join groups later when they collide (handled in GameScene)
-      columnBlocks.forEach((blocksInColumn, column) => {
-        // Check if any of these blocks are already in a group
-        const existingGroup = this.findExistingGroup(Array.from(blocksInColumn));
-
-        if (existingGroup) {
-          // Add force to existing group (force stacking)
-          const launchVelocity = this.getLaunchVelocity(matchResult.size);
-          existingGroup.addVelocity(0, launchVelocity);
-        } else {
-          // Create new group
-          const groupBlocks: Block[] = [];
-
-          blocksInColumn.forEach(block => {
-            // Remove block from column if it's in the grid
-            if (block.isInGrid) {
-              this.columnManager.removeBlockFromColumn(block);
-              block.isInGrid = false;
-            }
-
-            // Launch the block with velocity based on match size
-            block.launch(matchResult.size);
-            groupBlocks.push(block);
-          });
-
-          // Create and add the group
-          const group = new BlockGroup(groupBlocks);
-          this.columnManager.addGroup(group);
-        }
+      // Collect ALL blocks from ALL columns into a single group
+      // All blocks launched from one match should move as one rigid unit
+      const allLaunchedBlocks: Block[] = [];
+      columnBlocks.forEach((blocksInColumn) => {
+        blocksInColumn.forEach(block => {
+          allLaunchedBlocks.push(block);
+        });
       });
+
+      // Check if any of these blocks are already in a group
+      const existingGroup = this.findExistingGroup(allLaunchedBlocks);
+
+      if (existingGroup) {
+        // Add force to existing group (force stacking)
+        const launchVelocity = this.getLaunchVelocity(matchResult.size);
+        existingGroup.addVelocity(0, launchVelocity);
+      } else {
+        // Create ONE group for ALL blocks (across all columns)
+        const groupBlocks: Block[] = [];
+
+        allLaunchedBlocks.forEach(block => {
+          // Remove block from column if it's in the grid
+          if (block.isInGrid) {
+            this.columnManager.removeBlockFromColumn(block);
+            block.isInGrid = false;
+          }
+
+          // Launch the block with velocity based on match size
+          block.launch(matchResult.size);
+          groupBlocks.push(block);
+        });
+
+        // Create and add the single unified group
+        const group = new BlockGroup(groupBlocks);
+        this.columnManager.addGroup(group);
+      }
 
       return matchResult.blocks.length; // Return only matched blocks for score
     }
