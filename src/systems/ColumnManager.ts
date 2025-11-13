@@ -329,6 +329,31 @@ export class ColumnManager {
   }
 
   /**
+   * Check if two groups are colliding (any blocks overlapping)
+   * Returns true if groups have blocks in same column within ROW_HEIGHT distance
+   */
+  public checkGroupCollision(group1: BlockGroup, group2: BlockGroup): boolean {
+    const blocks1 = group1.getBlocks();
+    const blocks2 = group2.getBlocks();
+
+    // Check each block in group1 against each block in group2
+    for (const block1 of blocks1) {
+      for (const block2 of blocks2) {
+        // Check if blocks are in same column
+        if (block1.column === block2.column) {
+          // Check if blocks are close enough in Y position
+          const yDistance = Math.abs(block1.y - block2.y);
+          if (yDistance < ColumnManager.ROW_HEIGHT) {
+            return true; // Collision detected
+          }
+        }
+      }
+    }
+
+    return false; // No collision
+  }
+
+  /**
    * Check if a moving block collides with the bottom or another block
    */
   public checkCollision(block: Block): { collided: boolean; restY: number; restColumn: number } {

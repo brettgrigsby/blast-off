@@ -56,6 +56,23 @@ export class GameScene extends Phaser.Scene {
       // Update the group (applies gravity to all blocks)
       group.update(delta)
 
+      // Check for collisions with other groups (midair collisions)
+      for (const otherGroup of groups) {
+        // Skip self-collision and already-marked-for-removal groups
+        if (otherGroup === group || groupsToRemove.includes(otherGroup)) {
+          continue
+        }
+
+        // Check if groups are colliding
+        if (this.columnManager.checkGroupCollision(group, otherGroup)) {
+          // Merge otherGroup into this group (combines momentum)
+          group.mergeWith(otherGroup)
+
+          // Mark otherGroup for removal (it's been merged)
+          groupsToRemove.push(otherGroup)
+        }
+      }
+
       // Check for matches within the moving group
       if (this.matchDetector) {
         this.matchDetector.checkMatchesInGroup(group)
