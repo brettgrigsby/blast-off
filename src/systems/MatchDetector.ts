@@ -191,8 +191,9 @@ export class MatchDetector {
         });
       });
 
-      // Check if any of these blocks are already in a group
-      const existingGroup = this.findExistingGroup(allLaunchedBlocks);
+      // Check if the MATCHED blocks (not blocks above) are already in a group
+      // Only boost velocity if the match occurred within an existing group
+      const existingGroup = this.findExistingGroup(matchResult.blocks);
 
       if (existingGroup) {
         // Add force to existing group (force stacking)
