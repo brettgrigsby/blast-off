@@ -118,7 +118,7 @@ export class GameScene extends Phaser.Scene {
             blocksPlaced = true
           } else {
             // Block hasn't collided yet, let it fall independently
-            block.setVelocity(block.velocityX, block.velocityY)
+            block.setVelocity(block.velocityY)
           }
         }
         groupsToRemove.push(group)

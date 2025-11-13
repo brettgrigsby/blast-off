@@ -184,7 +184,7 @@ export class ColumnManager {
    * Add a new block to the game at a specific position
    * If Y is above grid, block starts falling
    */
-  public addBlock(column: number, y: number, color: BlockColor, velocity: { x: number, y: number } = { x: 0, y: 0 }): Block {
+  public addBlock(column: number, y: number, color: BlockColor, velocity: number = 0): Block {
     const x = this.getColumnCenterX(column);
 
     // Calculate row for legacy compatibility (will be removed later)
@@ -193,13 +193,13 @@ export class ColumnManager {
     const block = new Block(this.scene, column, row, x, y, color);
 
     // Set initial velocity (e.g., for falling blocks)
-    block.setVelocity(velocity.x, velocity.y);
+    block.setVelocity(velocity);
 
     // Add to column if in bounds and at rest, otherwise block is in motion
     const isInBounds = y >= ColumnManager.GRID_OFFSET_Y &&
                       y < ColumnManager.GRID_OFFSET_Y + ColumnManager.ROWS * ColumnManager.ROW_HEIGHT;
 
-    if (isInBounds && velocity.x === 0 && velocity.y === 0) {
+    if (isInBounds && velocity === 0) {
       this.columns[column].addBlock(block);
       block.isInGrid = true;
     } else {
@@ -289,7 +289,7 @@ export class ColumnManager {
    * Get all blocks that are currently moving (have velocity)
    */
   public getMovingBlocks(): Block[] {
-    return this.blocks.filter(block => block.velocityX !== 0 || block.velocityY !== 0);
+    return this.blocks.filter(block => block.velocityY !== 0);
   }
 
   /**
@@ -387,7 +387,7 @@ export class ColumnManager {
     // Update position
     const x = this.getColumnCenterX(columnIndex);
     block.setPosition(x, y);
-    block.setVelocity(0, 0);
+    block.setVelocity(0);
 
     // Update row for legacy compatibility
     block.row = Math.floor((y - ColumnManager.GRID_OFFSET_Y) / ColumnManager.ROW_HEIGHT);

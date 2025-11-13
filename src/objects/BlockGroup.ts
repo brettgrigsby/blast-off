@@ -6,7 +6,6 @@ import { Block } from './Block';
  */
 export class BlockGroup {
   private blocks: Set<Block>;
-  private velocityX: number = 0;
   private velocityY: number = 0;
 
   // Descent configuration
@@ -25,7 +24,6 @@ export class BlockGroup {
 
     // Set initial velocity based on first block (they should all have same velocity when formed)
     if (blocks.length > 0) {
-      this.velocityX = blocks[0].velocityX;
       this.velocityY = blocks[0].velocityY;
     }
   }
@@ -44,7 +42,7 @@ export class BlockGroup {
 
     this.blocks.add(block);
     // Sync the block's velocity with the group
-    block.setVelocity(this.velocityX, this.velocityY);
+    block.setVelocity(this.velocityY);
   }
 
   /**
@@ -167,20 +165,19 @@ export class BlockGroup {
   /**
    * Get the group's current velocity
    */
-  public getVelocity(): { x: number; y: number } {
-    return { x: this.velocityX, y: this.velocityY };
+  public getVelocity(): number {
+    return this.velocityY;
   }
 
   /**
    * Set the group's velocity (updates all blocks in the group)
    */
-  public setVelocity(velocityX: number, velocityY: number): void {
-    this.velocityX = velocityX;
+  public setVelocity(velocityY: number): void {
     this.velocityY = velocityY;
 
     // Update all blocks in the group
     this.blocks.forEach(block => {
-      block.setVelocity(velocityX, velocityY);
+      block.setVelocity(velocityY);
     });
   }
 
@@ -188,11 +185,8 @@ export class BlockGroup {
    * Add velocity to the group (force stacking)
    * This is used when new matches are created within the group
    */
-  public addVelocity(deltaVelocityX: number, deltaVelocityY: number): void {
-    this.setVelocity(
-      this.velocityX + deltaVelocityX,
-      this.velocityY + deltaVelocityY
-    );
+  public addVelocity(deltaVelocityY: number): void {
+    this.setVelocity(this.velocityY + deltaVelocityY);
   }
 
   /**
@@ -213,14 +207,13 @@ export class BlockGroup {
     }
 
     // Update velocity for all blocks
-    this.setVelocity(this.velocityX, this.velocityY);
+    this.setVelocity(this.velocityY);
 
     // Update each block's position as part of the rigid group
     // Don't call block.update() as that would apply individual gravity
     this.blocks.forEach(block => {
-      const newX = block.x + this.velocityX * deltaSeconds;
       const newY = block.y + this.velocityY * deltaSeconds;
-      block.setPosition(newX, newY);
+      block.setPosition(block.x, newY);
     });
   }
 
@@ -253,7 +246,7 @@ export class BlockGroup {
    * Initiate descent for this group (if it doesn't fully clear screen)
    */
   public startDescent(): void {
-    this.setVelocity(0, BlockGroup.DESCENT_VELOCITY);
+    this.setVelocity(BlockGroup.DESCENT_VELOCITY);
   }
 
   /**
@@ -273,15 +266,14 @@ export class BlockGroup {
 
     if (totalSize > 0) {
       const otherVelocity = otherGroup.getVelocity();
-      this.velocityX = (this.velocityX * thisSize + otherVelocity.x * otherSize) / totalSize;
-      this.velocityY = (this.velocityY * thisSize + otherVelocity.y * otherSize) / totalSize;
+      this.velocityY = (this.velocityY * thisSize + otherVelocity * otherSize) / totalSize;
 
       // Apply upward velocity bonus based on merged group size
       const mergeBonus = totalSize * BlockGroup.MERGE_VELOCITY_PER_BLOCK;
       this.velocityY += mergeBonus;
 
       // Update all blocks with the new combined velocity
-      this.setVelocity(this.velocityX, this.velocityY);
+      this.setVelocity(this.velocityY);
     }
   }
 

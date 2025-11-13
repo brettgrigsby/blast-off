@@ -95,12 +95,12 @@ export class GridManager {
    * Add a new block to the grid at a specific position
    * If row is negative (above grid), block starts falling
    */
-  public addBlock(column: number, row: number, color: BlockColor, velocity: { x: number, y: number } = { x: 0, y: 0 }): Block {
+  public addBlock(column: number, row: number, color: BlockColor, velocity: number = 0): Block {
     const { x, y } = this.gridToPixel(column, row);
     const block = new Block(this.scene, column, row, x, y, color);
 
     // Set initial velocity (e.g., for falling blocks)
-    block.setVelocity(velocity.x, velocity.y);
+    block.setVelocity(velocity);
 
     // Only add to grid if in bounds, otherwise block is in motion
     if (this.isInBounds(column, row)) {
@@ -187,7 +187,7 @@ export class GridManager {
    * Get all blocks that are currently moving (have velocity)
    */
   public getMovingBlocks(): Block[] {
-    return this.blocks.filter(block => block.velocityX !== 0 || block.velocityY !== 0);
+    return this.blocks.filter(block => block.velocityY !== 0);
   }
 
   /**
@@ -250,7 +250,7 @@ export class GridManager {
     // Look for the first block below in the same column
     for (let row = currentGridPos.row + 1; row < GridManager.ROWS; row++) {
       const blockBelow = this.grid[column][row];
-      if (blockBelow && blockBelow.velocityX === 0 && blockBelow.velocityY === 0) {
+      if (blockBelow && blockBelow.velocityY === 0) {
         // Check if we're touching it
         const blockBelowTop = blockBelow.y - GridManager.ROW_HEIGHT / 2;
         const currentBlockBottom = block.y + GridManager.ROW_HEIGHT / 2;

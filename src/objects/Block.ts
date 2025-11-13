@@ -27,7 +27,6 @@ export class Block {
   private scene: Phaser.Scene;
 
   // Movement properties
-  public velocityX: number = 0;
   public velocityY: number = 0;
   public isInGrid: boolean = false; // True when block is in the grid array, false otherwise
 
@@ -180,14 +179,13 @@ export class Block {
    * Check if this block is at rest (not moving)
    */
   public isAtRest(): boolean {
-    return this.velocityX === 0 && this.velocityY === 0;
+    return this.velocityY === 0;
   }
 
   /**
    * Set the block's velocity
    */
-  public setVelocity(velocityX: number, velocityY: number): void {
-    this.velocityX = velocityX;
+  public setVelocity(velocityY: number): void {
     this.velocityY = velocityY;
   }
 
@@ -200,14 +198,13 @@ export class Block {
     const deltaSeconds = delta / 1000;
 
     // Apply gravity to all moving blocks (accelerate downward)
-    if (this.velocityX !== 0 || this.velocityY !== 0) {
+    if (this.velocityY !== 0) {
       this.velocityY += Block.GRAVITY * deltaSeconds;
     } else {
       return; // Block is at rest, no need to update
     }
 
     // Update position based on velocity
-    this.x += this.velocityX * deltaSeconds;
     this.y += this.velocityY * deltaSeconds;
 
     // Redraw at new position
@@ -222,7 +219,7 @@ export class Block {
     // Calculate launch velocity: each matched block contributes -300 pixels/second
     const launchVelocity = matchSize * -300; // Negative = upward
 
-    this.setVelocity(0, launchVelocity);
+    this.setVelocity(launchVelocity);
     this.isInGrid = false; // No longer in grid when launching
   }
 

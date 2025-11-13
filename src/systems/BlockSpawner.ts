@@ -56,7 +56,7 @@ export class BlockSpawner {
 
     // Create block above grid with initial downward velocity
     // addBlock handles everything - creation, velocity, and tracking
-    this.columnManager.addBlock(column, spawnY, color, { x: 0, y: 1000 });
+    this.columnManager.addBlock(column, spawnY, color, 1000);
   }
 
   /**

@@ -197,7 +197,7 @@ export class MatchDetector {
       if (existingGroup) {
         // Add force to existing group (force stacking)
         const launchVelocity = this.getLaunchVelocity(matchResult.size);
-        existingGroup.addVelocity(0, launchVelocity);
+        existingGroup.addVelocity(launchVelocity);
       } else {
         // Create ONE group for ALL blocks (across all columns)
         const groupBlocks: Block[] = [];
@@ -266,7 +266,7 @@ export class MatchDetector {
       // Add upward velocity to the group based on match size
       // Apply 100% bonus velocity since the group is in motion
       const launchVelocity = this.getLaunchVelocity(matchedBlocks.size, true);
-      group.addVelocity(0, launchVelocity);
+      group.addVelocity(launchVelocity);
 
       return matchedBlocks.size;
     }

@@ -31,14 +31,14 @@ export class Column {
    * Get only blocks that are at rest (not moving)
    */
   public getBlocksAtRest(): Block[] {
-    return this.blocks.filter(block => block.velocityX === 0 && block.velocityY === 0);
+    return this.blocks.filter(block => block.velocityY === 0);
   }
 
   /**
    * Get only blocks that are moving
    */
   public getMovingBlocks(): Block[] {
-    return this.blocks.filter(block => block.velocityX !== 0 || block.velocityY !== 0);
+    return this.blocks.filter(block => block.velocityY !== 0);
   }
 
   /**
