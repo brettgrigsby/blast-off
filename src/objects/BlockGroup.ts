@@ -10,7 +10,7 @@ export class BlockGroup {
 
   // Descent configuration
   private static readonly DESCENT_VELOCITY = 100; // pixels/second downward
-  private static readonly MAX_DESCENT_VELOCITY = 100; // Maximum downward velocity for groups (much slower than new blocks at 1000 px/s)
+  private static readonly MAX_DESCENT_VELOCITY = 70; // Maximum downward velocity for groups (much slower than new blocks at 1000 px/s)
 
   // Gravity configuration - scales with group size
   private static readonly BASE_GRAVITY = 150; // Base gravity affecting all groups (px/s²)
