@@ -17,6 +17,9 @@ export class BlockGroup {
   private static readonly BASE_GRAVITY = 150; // Base gravity affecting all groups (px/s²)
   private static readonly MASS_GRAVITY_FACTOR = 75; // Additional gravity per block in group (px/s²)
 
+  // Merge velocity bonus - applied when groups collide and merge
+  private static readonly MERGE_VELOCITY_PER_BLOCK = -150; // Upward velocity bonus per block in merged group (px/s)
+
   constructor(blocks: Block[] = []) {
     this.blocks = new Set(blocks);
 
@@ -272,6 +275,10 @@ export class BlockGroup {
       const otherVelocity = otherGroup.getVelocity();
       this.velocityX = (this.velocityX * thisSize + otherVelocity.x * otherSize) / totalSize;
       this.velocityY = (this.velocityY * thisSize + otherVelocity.y * otherSize) / totalSize;
+
+      // Apply upward velocity bonus based on merged group size
+      const mergeBonus = totalSize * BlockGroup.MERGE_VELOCITY_PER_BLOCK;
+      this.velocityY += mergeBonus;
 
       // Update all blocks with the new combined velocity
       this.setVelocity(this.velocityX, this.velocityY);

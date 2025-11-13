@@ -264,7 +264,7 @@ export class MatchDetector {
       });
 
       // Add upward velocity to the group based on match size
-      // Apply 50% bonus velocity since the group is in motion
+      // Apply 100% bonus velocity since the group is in motion
       const launchVelocity = this.getLaunchVelocity(matchedBlocks.size, true);
       group.addVelocity(0, launchVelocity);
 
@@ -413,10 +413,10 @@ export class MatchDetector {
   /**
    * Get launch velocity for a given match size
    * @param matchSize - Number of blocks in the match
-   * @param isGroupInMotion - If true, applies 50% bonus velocity
+   * @param isGroupInMotion - If true, applies 100% bonus velocity
    */
   private getLaunchVelocity(matchSize: number, isGroupInMotion: boolean = false): number {
     const baseVelocity = matchSize * -300;
-    return isGroupInMotion ? baseVelocity * 1.5 : baseVelocity;
+    return isGroupInMotion ? baseVelocity * 2.0 : baseVelocity;
   }
 }
