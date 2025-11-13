@@ -11,6 +11,7 @@ export class BlockGroup {
   // Descent configuration
   private static readonly DESCENT_VELOCITY = 100; // pixels/second downward
   private static readonly MAX_DESCENT_VELOCITY = 70; // Maximum downward velocity for groups (much slower than new blocks at 1000 px/s)
+  private static readonly MAX_UPWARD_VELOCITY = -700; // Maximum upward movement velocity (px/s) - caps how fast groups move up, not how much velocity they can accumulate
 
   // Gravity configuration - scales with group size
   private static readonly BASE_GRAVITY = 150; // Base gravity affecting all groups (px/s²)
@@ -238,10 +239,18 @@ export class BlockGroup {
     // Update velocity for all blocks
     this.setVelocity(this.velocityY);
 
+    // Calculate the velocity to apply for movement
+    // Cap upward movement velocity while allowing stored velocity to remain uncapped
+    // This lets gravity act on the full velocity while limiting how fast groups actually move up
+    let appliedVelocity = this.velocityY;
+    if (appliedVelocity < BlockGroup.MAX_UPWARD_VELOCITY) {
+      appliedVelocity = BlockGroup.MAX_UPWARD_VELOCITY;
+    }
+
     // Update each block's position as part of the rigid group
     // Don't call block.update() as that would apply individual gravity
     this.blocks.forEach(block => {
-      const newY = block.y + this.velocityY * deltaSeconds;
+      const newY = block.y + appliedVelocity * deltaSeconds;
       block.setPosition(block.x, newY);
     });
   }
