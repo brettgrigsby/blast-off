@@ -12,9 +12,9 @@ export class ColumnManager {
   public static readonly COLUMN_WIDTH = 80; // 720px / 9 columns
   public static readonly ROW_HEIGHT = 80; // Square cells to match blocks
 
-  // Grid positioning - center the 9×12 board (720×960) on the 720×1080 canvas
+  // Grid positioning - position the 9×12 board (720×960) on the 720×1080 canvas
   public static readonly GRID_OFFSET_X = 0;
-  public static readonly GRID_OFFSET_Y = 60; // (1080 - 960) / 2 = 60px top margin
+  public static readonly GRID_OFFSET_Y = 30; // 30px top margin, 90px bottom margin
 
   // Column storage: Column-based architecture
   private columns: Column[];
@@ -429,6 +429,16 @@ export class ColumnManager {
       );
     }
 
+    graphics.strokePath();
+
+    // Draw prominent top border line (20% opacity overlays the 50% base line for 70% total)
+    graphics.lineStyle(3, 0xffffff, 0.2);
+    graphics.lineBetween(
+      ColumnManager.GRID_OFFSET_X,
+      ColumnManager.GRID_OFFSET_Y,
+      ColumnManager.GRID_OFFSET_X + gridWidth,
+      ColumnManager.GRID_OFFSET_Y
+    );
     graphics.strokePath();
   }
 }

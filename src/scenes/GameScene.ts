@@ -368,11 +368,11 @@ export class GameScene extends Phaser.Scene {
       }
     })
 
-    // Add score counter at top center (Iteration 5)
+    // Add score counter at bottom left (Iteration 5)
     this.scoreText = this.add
       .text(
-        GameSettings.canvas.width / 2,
-        30,
+        20,
+        GameSettings.canvas.height - 20,
         '0',
         {
           fontSize: '48px',
@@ -381,7 +381,7 @@ export class GameScene extends Phaser.Scene {
           fontStyle: 'bold',
         }
       )
-      .setOrigin(0.5)
+      .setOrigin(0, 1)
       .setDepth(1000) // Keep text above blocks
   }
 

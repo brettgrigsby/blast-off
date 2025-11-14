@@ -11,9 +11,9 @@ export class GridManager {
   public static readonly COLUMN_WIDTH = 80; // 720px / 9 columns
   public static readonly ROW_HEIGHT = 80; // Square cells to match blocks
 
-  // Grid positioning - center the 9×12 board (720×960) on the 720×1080 canvas
+  // Grid positioning - position the 9×12 board (720×960) on the 720×1080 canvas
   public static readonly GRID_OFFSET_X = 0;
-  public static readonly GRID_OFFSET_Y = 60; // (1080 - 960) / 2 = 60px top margin
+  public static readonly GRID_OFFSET_Y = 30; // 30px top margin, 90px bottom margin
 
   // Grid storage: [column][row] -> Block
   private grid: (Block | null)[][];
