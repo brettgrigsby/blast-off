@@ -10,6 +10,9 @@ export class InputManager {
   private isDragging: boolean = false;
   private selectedBlock: Block | null = null;
 
+  // Input enabled state
+  private enabled: boolean = true;
+
   // Callback for when a swap occurs
   private onSwapCallback?: () => void;
 
@@ -40,6 +43,8 @@ export class InputManager {
   }
 
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
+    if (!this.enabled) return;
+
     // Find which block was clicked
     const clickedBlock = this.getBlockAtPosition(pointer.x, pointer.y);
 
@@ -293,13 +298,13 @@ export class InputManager {
   }
 
   /**
-   * Enable or disable input (useful for game over, etc.)
+   * Enable or disable input (useful for game over, pause, etc.)
    */
   public setEnabled(enabled: boolean): void {
     if (!enabled) {
       this.handlePointerUp(); // Release any current drag
     }
-    this.scene.input.enabled = enabled;
+    this.enabled = enabled;
   }
 
   /**

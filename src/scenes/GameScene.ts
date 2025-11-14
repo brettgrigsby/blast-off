@@ -29,6 +29,13 @@ export class GameScene extends Phaser.Scene {
   // Grey block recovery tracking
   private blocksReadyToRecover: Block[] = []
 
+  // Pause state
+  private isPaused: boolean = false
+  private pauseButton!: Phaser.GameObjects.Container
+  private pauseOverlay!: Phaser.GameObjects.Rectangle
+  private saveButton!: Phaser.GameObjects.Text
+  private resumeButton!: Phaser.GameObjects.Text
+
   constructor() {
     super({ key: 'GameScene' })
   }
@@ -48,6 +55,7 @@ export class GameScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     if (!this.columnManager) return
+    if (this.isPaused) return
 
     const blocksToRemove: Block[] = []
     const groupsToRemove: any[] = []
@@ -383,6 +391,69 @@ export class GameScene extends Phaser.Scene {
       )
       .setOrigin(0, 1)
       .setDepth(1000) // Keep text above blocks
+
+    // Add pause button at bottom right (two rectangles)
+    // Rectangles: centered at their positions, spans x:0-16 and x:24-40, y:-20 to 20
+    const pauseRect1 = this.add.rectangle(8, 0, 16, 40, 0xffffff)
+    const pauseRect2 = this.add.rectangle(32, 0, 16, 40, 0xffffff)
+    this.pauseButton = this.add.container(
+      GameSettings.canvas.width - 60,
+      GameSettings.canvas.height - 50,
+      [pauseRect1, pauseRect2]
+    )
+      .setDepth(1000)
+      .setInteractive({
+        hitArea: new Phaser.Geom.Rectangle(0, -20, 40, 40),
+        hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+        useHandCursor: true
+      })
+      .on('pointerdown', () => this.pauseGame())
+
+    // Create pause menu overlay (hidden initially)
+    this.pauseOverlay = this.add
+      .rectangle(0, 0, GameSettings.canvas.width, GameSettings.canvas.height, 0x000000, 0.7)
+      .setOrigin(0, 0)
+      .setDepth(2000)
+      .setVisible(false)
+      .setInteractive() // Make interactive to block clicks to game below
+
+    // Save Game button
+    this.saveButton = this.add
+      .text(
+        GameSettings.canvas.width / 2,
+        GameSettings.canvas.height / 2 - 40,
+        'Save Game',
+        {
+          fontSize: '40px',
+          color: '#ffffff',
+          fontFamily: 'Arial',
+          fontStyle: 'bold',
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(2001)
+      .setVisible(false)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.saveGame())
+
+    // Resume button
+    this.resumeButton = this.add
+      .text(
+        GameSettings.canvas.width / 2,
+        GameSettings.canvas.height / 2 + 40,
+        'Resume',
+        {
+          fontSize: '40px',
+          color: '#ffffff',
+          fontFamily: 'Arial',
+          fontStyle: 'bold',
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(2001)
+      .setVisible(false)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.resumeGame())
   }
 
   /**
@@ -392,6 +463,51 @@ export class GameScene extends Phaser.Scene {
     if (this.scoreText) {
       this.scoreText.setText(`${this.blocksRemoved}`)
     }
+  }
+
+  /**
+   * Pause the game
+   */
+  private pauseGame(): void {
+    this.isPaused = true
+
+    // Stop game systems
+    this.blockSpawner.stop()
+    this.inputManager.setEnabled(false)
+    this.physics.pause()
+
+    // Show pause menu
+    this.pauseOverlay.setVisible(true)
+    this.saveButton.setVisible(true)
+    this.resumeButton.setVisible(true)
+    this.pauseButton.setVisible(false)
+  }
+
+  /**
+   * Resume the game
+   */
+  private resumeGame(): void {
+    console.log('Resume button clicked')
+    this.isPaused = false
+
+    // Restart game systems
+    this.blockSpawner.start()
+    this.inputManager.setEnabled(true)
+    this.physics.resume()
+
+    // Hide pause menu
+    this.pauseOverlay.setVisible(false)
+    this.saveButton.setVisible(false)
+    this.resumeButton.setVisible(false)
+    this.pauseButton.setVisible(true)
+  }
+
+  /**
+   * Save game (placeholder for now)
+   */
+  private saveGame(): void {
+    // TODO: Implement save game logic
+    console.log('Save game clicked - not yet implemented')
   }
 
   /**
