@@ -33,8 +33,8 @@ export class GameScene extends Phaser.Scene {
   private isPaused: boolean = false
   private pauseButton!: Phaser.GameObjects.Container
   private pauseOverlay!: Phaser.GameObjects.Rectangle
-  private saveButton!: Phaser.GameObjects.Text
-  private resumeButton!: Phaser.GameObjects.Text
+  private saveButton!: Phaser.GameObjects.Container
+  private resumeButton!: Phaser.GameObjects.Container
 
   constructor() {
     super({ key: 'GameScene' })
@@ -411,48 +411,58 @@ export class GameScene extends Phaser.Scene {
 
     // Create pause menu overlay (hidden initially)
     this.pauseOverlay = this.add
-      .rectangle(0, 0, GameSettings.canvas.width, GameSettings.canvas.height, 0x000000, 0.7)
+      .rectangle(0, 0, GameSettings.canvas.width, GameSettings.canvas.height, 0x000000, 0.8)
       .setOrigin(0, 0)
       .setDepth(2000)
       .setVisible(false)
       .setInteractive() // Make interactive to block clicks to game below
 
-    // Save Game button
-    this.saveButton = this.add
-      .text(
-        GameSettings.canvas.width / 2,
-        GameSettings.canvas.height / 2 - 40,
-        'Save Game',
-        {
-          fontSize: '40px',
-          color: '#ffffff',
-          fontFamily: 'Arial',
-          fontStyle: 'bold',
-        }
-      )
-      .setOrigin(0.5)
+    // Save Game button with border
+    const saveButtonBg = this.add.graphics()
+      .lineStyle(1, 0xffffff, 1)
+      .strokeRoundedRect(-150, -40, 300, 80, 10)
+    const saveButtonText = this.add.text(0, 0, 'Save Game', {
+      fontSize: '40px',
+      color: '#ffffff',
+      fontFamily: 'Arial',
+      fontStyle: 'bold',
+    }).setOrigin(0.5)
+    this.saveButton = this.add.container(
+      GameSettings.canvas.width / 2,
+      GameSettings.canvas.height / 2 - 50,
+      [saveButtonBg, saveButtonText]
+    )
       .setDepth(2001)
       .setVisible(false)
-      .setInteractive({ useHandCursor: true })
+      .setInteractive({
+        hitArea: new Phaser.Geom.Rectangle(-150, -40, 300, 80),
+        hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+        useHandCursor: true
+      })
       .on('pointerdown', () => this.saveGame())
 
-    // Resume button
-    this.resumeButton = this.add
-      .text(
-        GameSettings.canvas.width / 2,
-        GameSettings.canvas.height / 2 + 40,
-        'Resume',
-        {
-          fontSize: '40px',
-          color: '#ffffff',
-          fontFamily: 'Arial',
-          fontStyle: 'bold',
-        }
-      )
-      .setOrigin(0.5)
+    // Resume button with border
+    const resumeButtonBg = this.add.graphics()
+      .lineStyle(1, 0xffffff, 1)
+      .strokeRoundedRect(-150, -40, 300, 80, 10)
+    const resumeButtonText = this.add.text(0, 0, 'Resume', {
+      fontSize: '40px',
+      color: '#ffffff',
+      fontFamily: 'Arial',
+      fontStyle: 'bold',
+    }).setOrigin(0.5)
+    this.resumeButton = this.add.container(
+      GameSettings.canvas.width / 2,
+      GameSettings.canvas.height / 2 + 50,
+      [resumeButtonBg, resumeButtonText]
+    )
       .setDepth(2001)
       .setVisible(false)
-      .setInteractive({ useHandCursor: true })
+      .setInteractive({
+        hitArea: new Phaser.Geom.Rectangle(-150, -40, 300, 80),
+        hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+        useHandCursor: true
+      })
       .on('pointerdown', () => this.resumeGame())
   }
 
