@@ -282,45 +282,46 @@ export class MatchDetector {
    * Detect horizontal matches in a set of blocks using physical positions
    */
   private detectHorizontalMatchesInBlocks(blocks: Block[], matchedBlocks: Set<Block>): void {
-    // Group blocks by row (based on physical Y position)
-    const rowMap = new Map<number, Block[]>();
-    const ROW_HEIGHT = ColumnManager.ROW_HEIGHT;
-    const ROW_TOLERANCE = ROW_HEIGHT / 4; // 25% tolerance for row alignment
+    // Filter out grey blocks
+    const activeBlocks = blocks.filter(block => !block.isGrey());
+    if (activeBlocks.length < 3) return;
 
-    blocks.forEach(block => {
-      if (block.isGrey()) return;
+    // Cluster blocks by similar Y positions (relative positioning)
+    const ROW_TOLERANCE = 20; // Blocks within 20px vertically are considered in the same row
+    const rowClusters: Block[][] = [];
 
-      // Round Y position to nearest row
-      const rowIndex = Math.round(block.y / ROW_HEIGHT);
-      const rowY = rowIndex * ROW_HEIGHT;
+    // Sort blocks by Y position to make clustering easier
+    const sortedByY = [...activeBlocks].sort((a, b) => a.y - b.y);
 
-      // Check if block is close enough to this row
-      if (Math.abs(block.y - rowY) <= ROW_TOLERANCE) {
-        if (!rowMap.has(rowIndex)) {
-          rowMap.set(rowIndex, []);
-        }
-        rowMap.get(rowIndex)!.push(block);
+    // Create clusters of blocks with similar Y positions
+    let currentCluster: Block[] = [sortedByY[0]];
+    for (let i = 1; i < sortedByY.length; i++) {
+      const block = sortedByY[i];
+      const clusterY = currentCluster[0].y;
+
+      // If block is within tolerance of the cluster's Y position, add it
+      if (Math.abs(block.y - clusterY) <= ROW_TOLERANCE) {
+        currentCluster.push(block);
+      } else {
+        // Start a new cluster
+        rowClusters.push(currentCluster);
+        currentCluster = [block];
       }
-    });
+    }
+    // Don't forget the last cluster
+    rowClusters.push(currentCluster);
 
-    // Check each row for matches
-    rowMap.forEach(rowBlocks => {
-      // Sort by X position (column)
-      rowBlocks.sort((a, b) => a.column - b.column);
+    // Check each cluster for horizontal matches
+    rowClusters.forEach(clusterBlocks => {
+      if (clusterBlocks.length < 3) return;
+
+      // Sort by column (X position)
+      clusterBlocks.sort((a, b) => a.column - b.column);
 
       let currentColor: BlockColor | null = null;
       let consecutiveBlocks: Block[] = [];
 
-      rowBlocks.forEach((block, index) => {
-        if (block.isGrey()) {
-          if (consecutiveBlocks.length >= 3) {
-            consecutiveBlocks.forEach(b => matchedBlocks.add(b));
-          }
-          currentColor = null;
-          consecutiveBlocks = [];
-          return;
-        }
-
+      clusterBlocks.forEach(block => {
         // Check if this block is adjacent to the previous one (same or next column)
         const isAdjacent = consecutiveBlocks.length === 0 ||
           (block.column === consecutiveBlocks[consecutiveBlocks.length - 1].column + 1);
