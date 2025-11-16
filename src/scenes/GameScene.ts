@@ -21,6 +21,7 @@ interface SavedBlock {
 interface SavedGroup {
   bi: number[]     // block indices (into blocks array)
   v: number        // velocityY
+  bc?: number      // boostCount (omit if 0)
 }
 
 interface SaveState {
@@ -604,10 +605,16 @@ export class GameScene extends Phaser.Scene {
       }
 
       if (blockIndices.length > 0) {
-        savedGroups.push({
+        const savedGroup: SavedGroup = {
           bi: blockIndices,
           v: Math.round(group.getVelocity())
-        })
+        }
+        // Only include boostCount if it's non-zero
+        const boostCount = group.getBoostCount()
+        if (boostCount > 0) {
+          savedGroup.bc = boostCount
+        }
+        savedGroups.push(savedGroup)
       }
     }
 
@@ -718,6 +725,10 @@ export class GameScene extends Phaser.Scene {
           // Set the group's velocity (BlockGroup constructor sets it from first block,
           // but we need to override it with the saved velocity)
           group.setVelocity(savedGroup.v)
+          // Restore boost count if it was saved
+          if (savedGroup.bc !== undefined) {
+            group.setBoostCount(savedGroup.bc)
+          }
           this.columnManager.addGroup(group)
         }
       }

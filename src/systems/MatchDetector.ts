@@ -278,9 +278,12 @@ export class MatchDetector {
       });
 
       // Add upward velocity to the group based on match size
-      // Apply 100% bonus velocity since the group is in motion
-      const launchVelocity = this.getLaunchVelocity(matchedBlocks.size, true);
+      // Apply bonus velocity based on the current boost count
+      const launchVelocity = this.getLaunchVelocity(matchedBlocks.size, true, group.getBoostCount());
       group.addVelocity(launchVelocity);
+
+      // Increment the boost count for this group
+      group.incrementBoostCount();
 
       return matchedBlocks.size;
     }
@@ -428,10 +431,17 @@ export class MatchDetector {
   /**
    * Get launch velocity for a given match size
    * @param matchSize - Number of blocks in the match
-   * @param isGroupInMotion - If true, applies 100% bonus velocity
+   * @param isGroupInMotion - If true, applies bonus velocity based on boost count
+   * @param boostCount - Number of times the group has been boosted (0 for first boost)
    */
-  private getLaunchVelocity(matchSize: number, isGroupInMotion: boolean = false): number {
+  private getLaunchVelocity(matchSize: number, isGroupInMotion: boolean = false, boostCount: number = 0): number {
     const baseVelocity = matchSize * -300;
-    return isGroupInMotion ? baseVelocity * 2.0 : baseVelocity;
+    if (!isGroupInMotion) {
+      return baseVelocity;
+    }
+    // Formula: baseVelocity * (1 + 2^boostCount)
+    // boostCount 0: 2x (1 + 1), boostCount 1: 3x (1 + 2), boostCount 2: 5x (1 + 4), boostCount 3: 9x (1 + 8)
+    const multiplier = 1 + Math.pow(2, boostCount);
+    return baseVelocity * multiplier;
   }
 }

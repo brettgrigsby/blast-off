@@ -7,6 +7,7 @@ import { Block } from './Block';
 export class BlockGroup {
   private blocks: Set<Block>;
   private velocityY: number = 0;
+  private boostCount: number = 0; // Number of times this group has been boosted by in-motion matches
 
   // Descent configuration
   private static readonly DESCENT_VELOCITY = 100; // pixels/second downward
@@ -212,6 +213,27 @@ export class BlockGroup {
   }
 
   /**
+   * Get the number of times this group has been boosted by in-motion matches
+   */
+  public getBoostCount(): number {
+    return this.boostCount;
+  }
+
+  /**
+   * Increment the boost count (called when the group is boosted by an in-motion match)
+   */
+  public incrementBoostCount(): void {
+    this.boostCount++;
+  }
+
+  /**
+   * Set the boost count (used when loading saved games)
+   */
+  public setBoostCount(count: number): void {
+    this.boostCount = count;
+  }
+
+  /**
    * Add velocity to the group (force stacking)
    * This is used when new matches are created within the group
    */
@@ -314,6 +336,9 @@ export class BlockGroup {
       // Update all blocks with the new combined velocity
       this.setVelocity(this.velocityY);
     }
+
+    // Take the maximum boost count from the merging groups
+    this.boostCount = Math.max(this.boostCount, otherGroup.getBoostCount());
 
     // Fix any Y-position drift from floating-point calculations
     this.realignBlocks();
