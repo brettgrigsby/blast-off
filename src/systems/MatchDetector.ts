@@ -151,48 +151,58 @@ export class MatchDetector {
   }
 
   /**
-   * Check for matches and launch matched blocks + all blocks above them as groups
+   * Get all blocks connected to the matched blocks using flood-fill
+   * Only returns blocks that are physically touching (adjacent in same column) ABOVE the match
+   */
+  private getConnectedBlocks(matchedBlocks: Block[]): Block[] {
+    const connectedSet = new Set<Block>();
+    const toProcess: Block[] = [...matchedBlocks];
+
+    // Add all matched blocks to the connected set
+    matchedBlocks.forEach(block => connectedSet.add(block));
+
+    // Process each block and find its connected neighbors above
+    while (toProcess.length > 0) {
+      const currentBlock = toProcess.pop()!;
+      const columnIndex = currentBlock.column;
+      const column = this.columnManager.getColumn(columnIndex);
+
+      if (!column) continue;
+
+      // Check for blocks directly above this one (only look upward)
+      const blockAbove = column.getBlockAbove(currentBlock.y);
+      if (blockAbove && !connectedSet.has(blockAbove)) {
+        // Verify it's actually touching (within ROW_HEIGHT tolerance)
+        const distance = currentBlock.y - blockAbove.y;
+        const expectedDistance = ColumnManager.ROW_HEIGHT;
+
+        if (Math.abs(distance - expectedDistance) <= 1) {
+          connectedSet.add(blockAbove);
+          toProcess.push(blockAbove);
+        }
+      }
+    }
+
+    return Array.from(connectedSet);
+  }
+
+  /**
+   * Check for matches and launch matched blocks + all connected blocks as groups
+   * Uses flood-fill to only include blocks physically touching the match
    * Returns number of blocks launched (for score tracking)
    */
   public checkAndProcessMatches(): number {
     const matchResult = this.detectMatches();
 
     if (matchResult.blocks.length > 0) {
-      // Track blocks to launch, organized by column
-      const columnBlocks = new Map<number, Set<Block>>();
-
-      // Add matched blocks and find all blocks above them
+      // Convert matched blocks to grey and show flames
       matchResult.blocks.forEach(matchedBlock => {
-        // Convert matched block to grey
         matchedBlock.setColor(BlockColor.GREY);
-
-        // Show flame sprite for this matched block (original match)
         matchedBlock.showFlame();
-
-        const columnIndex = matchedBlock.column;
-        if (!columnBlocks.has(columnIndex)) {
-          columnBlocks.set(columnIndex, new Set());
-        }
-        columnBlocks.get(columnIndex)!.add(matchedBlock);
-
-        // Find all blocks above this matched block in the same column
-        const column = this.columnManager.getColumn(columnIndex);
-        if (column) {
-          const blocksAbove = column.getBlocksAbove(matchedBlock.y);
-          blocksAbove.forEach(blockAbove => {
-            columnBlocks.get(columnIndex)!.add(blockAbove);
-          });
-        }
       });
 
-      // Collect ALL blocks from ALL columns into a single group
-      // All blocks launched from one match should move as one rigid unit
-      const allLaunchedBlocks: Block[] = [];
-      columnBlocks.forEach((blocksInColumn) => {
-        blocksInColumn.forEach(block => {
-          allLaunchedBlocks.push(block);
-        });
-      });
+      // Get only the blocks that are physically connected to the matched blocks
+      const allLaunchedBlocks = this.getConnectedBlocks(matchResult.blocks);
 
       // Check if the MATCHED blocks (not blocks above) are already in a group
       // Only boost velocity if the match occurred within an existing group
