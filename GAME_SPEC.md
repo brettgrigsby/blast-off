@@ -1,10 +1,10 @@
-# Blast Off
+# Block Booster
 
 A match-3 game about defending your game board from falling in blocks by matching blocks to launch them back up.
 
 ## Game Play
 
-Blast off is played on a board of 9 columns × 12 rows. Blocks will fall down from the top of the screen. Each falling block will be 1 of 5 colors: Red, Yellow, Blue, Green, Purple. The user can drag 1 block at a time within its column to attempt to match 3 or more blocks of the same color vertically or horizontally. When a match is made, the blocks included in the match will turn grey and launch themselves and any blocks above them towards the top of the screen. Any blocks pushed above the top of the screen are removed from the board. The user must remove 100 blocks from the board to complete the level.
+Block Booster is played on a board of 9 columns × 12 rows. Blocks will fall down from the top of the screen. Each falling block will be 1 of 5 colors: Red, Yellow, Blue, Green, Purple. The user can drag 1 block at a time within its column to attempt to match 3 or more blocks of the same color vertically or horizontally. When a match is made, the blocks included in the match will turn grey and launch themselves and any blocks above them towards the top of the screen. Any blocks pushed above the top of the screen are removed from the board. The user must remove 100 blocks from the board to complete the level.
 
 Blocks will not always be at rigid grid positions since they can launch and fall back down, but they will always remain within their discrete column.
 

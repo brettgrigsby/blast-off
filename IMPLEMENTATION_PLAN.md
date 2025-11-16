@@ -1,6 +1,6 @@
-# Blast Off - Implementation Plan
+# Block Booster - Implementation Plan
 
-This document outlines the iterative approach to building the Blast Off match-3 game. Each iteration builds on the previous one and provides something immediately testable.
+This document outlines the iterative approach to building the Block Booster match-3 game. Each iteration builds on the previous one and provides something immediately testable.
 
 ## Tech Stack
 

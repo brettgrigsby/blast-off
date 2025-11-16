@@ -1,7 +1,7 @@
 {
-  "name": "blast-off",
+  "name": "block-booster",
   "version": "1.0.0",
-  "description": "Blast Off game for Remix platform",
+  "description": "Block Booster game for Remix platform",
   "type": "module",
   "scripts": {
     "dev": "remix-dev dev",

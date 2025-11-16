@@ -27,7 +27,7 @@ export default {
   isRemixGame: false,
 
   // Display name for your game
-  gameName: 'Blast Off',
+  gameName: 'Block Booster',
 
   // Multiplayer mode (true = multiplayer, false = singleplayer)
   multiplayer: false,

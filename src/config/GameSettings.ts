@@ -1,5 +1,5 @@
 /**
- * Game Settings for Blast Off
+ * Game Settings for Block Booster
  * Centralized configuration for all tunable game parameters
  */
 

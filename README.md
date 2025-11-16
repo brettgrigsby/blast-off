@@ -1,4 +1,4 @@
-# Blast Off
+# Block Booster
 
 A Phaser game built with the Remix framework.
 
