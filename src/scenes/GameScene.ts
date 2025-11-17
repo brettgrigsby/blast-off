@@ -60,9 +60,8 @@ export class GameScene extends Phaser.Scene {
   private saveButton!: Phaser.GameObjects.Container
   private resumeButton!: Phaser.GameObjects.Container
 
-  // Block dump warning indicators
-  private warningLeft!: Phaser.GameObjects.Container
-  private warningRight!: Phaser.GameObjects.Container
+  // Block dump warning overlay
+  private warningOverlay!: Phaser.GameObjects.Rectangle
 
   constructor() {
     super({ key: 'GameScene' })
@@ -516,55 +515,29 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Create warning indicators for block dump
+   * Create warning overlay for block dump
    */
   private createWarningIndicators(): void {
-    // Create left warning indicator
-    const leftCircle = this.add.graphics()
-    leftCircle.fillStyle(0xff0000, 1)
-    leftCircle.fillCircle(0, 0, 25)
-
-    const leftText = this.add.text(0, 0, '!', {
-      fontSize: '48px',
-      color: '#ffffff',
-      fontFamily: 'Arial',
-      fontStyle: 'bold',
-    }).setOrigin(0.5)
-
-    this.warningLeft = this.add.container(40, 40, [leftCircle, leftText])
-      .setDepth(1000)
-      .setVisible(false)
-
-    // Create right warning indicator
-    const rightCircle = this.add.graphics()
-    rightCircle.fillStyle(0xff0000, 1)
-    rightCircle.fillCircle(0, 0, 25)
-
-    const rightText = this.add.text(0, 0, '!', {
-      fontSize: '48px',
-      color: '#ffffff',
-      fontFamily: 'Arial',
-      fontStyle: 'bold',
-    }).setOrigin(0.5)
-
-    this.warningRight = this.add.container(GameSettings.canvas.width - 40, 40, [rightCircle, rightText])
+    // Create red flashing overlay that covers the area between screen top and board top
+    this.warningOverlay = this.add
+      .rectangle(0, 0, GameSettings.canvas.width, ColumnManager.GRID_OFFSET_Y, 0xff0000, 0.5)
+      .setOrigin(0, 0)
       .setDepth(1000)
       .setVisible(false)
   }
 
   /**
-   * Show dump warning indicators with flashing animation
+   * Show dump warning overlay with flashing animation
    */
   public showDumpWarning(): void {
-    if (!this.warningLeft || !this.warningRight) return
+    if (!this.warningOverlay) return
 
-    this.warningLeft.setVisible(true)
-    this.warningRight.setVisible(true)
+    this.warningOverlay.setVisible(true)
 
-    // Create flashing animation (fade between 0.3 and 1.0 alpha)
+    // Create flashing animation (fade between 0 and 0.5 alpha for red overlay)
     this.tweens.add({
-      targets: [this.warningLeft, this.warningRight],
-      alpha: { from: 1, to: 0.3 },
+      targets: this.warningOverlay,
+      alpha: { from: 0.5, to: 0 },
       duration: 300,
       yoyo: true,
       repeat: -1, // Infinite repeat
@@ -572,17 +545,16 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Hide dump warning indicators and stop animation
+   * Hide dump warning overlay and stop animation
    */
   public hideDumpWarning(): void {
-    if (!this.warningLeft || !this.warningRight) return
+    if (!this.warningOverlay) return
 
-    // Stop all tweens on the warning containers
-    this.tweens.killTweensOf([this.warningLeft, this.warningRight])
+    // Stop all tweens on the warning overlay
+    this.tweens.killTweensOf(this.warningOverlay)
 
     // Reset alpha and hide
-    this.warningLeft.setAlpha(1).setVisible(false)
-    this.warningRight.setAlpha(1).setVisible(false)
+    this.warningOverlay.setAlpha(0.5).setVisible(false)
   }
 
   /**
