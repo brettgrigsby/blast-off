@@ -29,6 +29,7 @@ interface SaveState {
   s: number        // score (blocksRemoved)
   b: SavedBlock[]  // blocks
   g?: SavedGroup[] // groups (omit if empty)
+  lct?: { [column: number]: number } // loseConditionTimers: column -> remaining ms (omit if empty)
 }
 
 declare global {
@@ -63,6 +64,17 @@ export class GameScene extends Phaser.Scene {
 
   // Block dump warning overlay
   private warningOverlay!: Phaser.GameObjects.Rectangle
+
+  // Lose condition tracking
+  private loseConditionTimers: Map<number, Phaser.Time.TimerEvent> = new Map()
+  private columnsAtRisk: Set<number> = new Set()
+  private columnWarnings: Map<number, Phaser.GameObjects.Rectangle> = new Map()
+  private gameOverOverlay!: Phaser.GameObjects.Rectangle
+  private gameOverTitle!: Phaser.GameObjects.Text
+  private loadFromSaveButton!: Phaser.GameObjects.Container
+  private saveScoreButton!: Phaser.GameObjects.Container
+  private hasSavedGame: boolean = false
+  private savedGameState: SaveState | null = null
 
   constructor() {
     super({ key: 'GameScene' })
@@ -260,6 +272,37 @@ export class GameScene extends Phaser.Scene {
       this.updateScoreDisplay()
     }
 
+    // Check for lose condition (columns too tall)
+    const previousColumnsAtRisk = new Set(this.columnsAtRisk)
+    this.checkLoseCondition()
+
+    // Start timers for newly at-risk columns
+    for (const col of this.columnsAtRisk) {
+      if (!previousColumnsAtRisk.has(col) && !this.loseConditionTimers.has(col)) {
+        // Start 5-second timer for this column
+        const timer = this.time.addEvent({
+          delay: 5000,
+          callback: () => {
+            this.triggerGameOver()
+          },
+          callbackScope: this,
+          loop: false,
+        })
+        this.loseConditionTimers.set(col, timer)
+      }
+    }
+
+    // Remove timers for columns no longer at risk
+    for (const col of previousColumnsAtRisk) {
+      if (!this.columnsAtRisk.has(col)) {
+        const timer = this.loseConditionTimers.get(col)
+        if (timer) {
+          timer.remove()
+          this.loseConditionTimers.delete(col)
+        }
+      }
+    }
+
     // Check for matches after blocks are placed
     if (blocksPlaced && this.matchDetector) {
       const matchCount = this.matchDetector.checkAndProcessMatches()
@@ -351,7 +394,10 @@ export class GameScene extends Phaser.Scene {
 
         // Load saved game state if available
         if (gameInfo?.initialGameState?.gameState) {
-          this.loadGameState(gameInfo.initialGameState.gameState as SaveState)
+          const savedState = gameInfo.initialGameState.gameState as SaveState
+          this.hasSavedGame = true
+          this.savedGameState = savedState
+          this.loadGameState(savedState)
         }
       } catch (error) {
         console.error('Failed to initialize single player SDK:', error)
@@ -507,6 +553,86 @@ export class GameScene extends Phaser.Scene {
         useHandCursor: true
       })
       .on('pointerdown', () => this.resumeGame())
+
+    // Create game over overlay (hidden initially)
+    this.createGameOverOverlay()
+  }
+
+  /**
+   * Create game over overlay and buttons
+   */
+  private createGameOverOverlay(): void {
+    // Background overlay
+    this.gameOverOverlay = this.add
+      .rectangle(0, 0, GameSettings.canvas.width, GameSettings.canvas.height, 0x000000, 0.8)
+      .setOrigin(0, 0)
+      .setDepth(2000)
+      .setVisible(false)
+      .setInteractive() // Block clicks to game below
+
+    // Title text
+    this.gameOverTitle = this.add.text(
+      GameSettings.canvas.width / 2,
+      GameSettings.canvas.height / 3,
+      'Level Failed',
+      {
+        fontSize: '60px',
+        color: '#ff0000',
+        fontFamily: 'Arial',
+        fontStyle: 'bold',
+      }
+    )
+      .setOrigin(0.5)
+      .setDepth(2001)
+      .setVisible(false)
+
+    // Load from Save button
+    const loadButtonBg = this.add.graphics()
+      .lineStyle(1, 0xffffff, 1)
+      .strokeRoundedRect(-150, -40, 300, 80, 10)
+    const loadButtonText = this.add.text(0, 0, 'Load from Save', {
+      fontSize: '32px',
+      color: '#ffffff',
+      fontFamily: 'Arial',
+      fontStyle: 'bold',
+    }).setOrigin(0.5)
+    this.loadFromSaveButton = this.add.container(
+      GameSettings.canvas.width / 2,
+      GameSettings.canvas.height / 2 - 50,
+      [loadButtonBg, loadButtonText]
+    )
+      .setDepth(2001)
+      .setVisible(false)
+      .setInteractive({
+        hitArea: new Phaser.Geom.Rectangle(-150, -40, 300, 80),
+        hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+        useHandCursor: true
+      })
+      .on('pointerdown', () => this.loadFromSave())
+
+    // Save Score button
+    const saveScoreButtonBg = this.add.graphics()
+      .lineStyle(1, 0xffffff, 1)
+      .strokeRoundedRect(-150, -40, 300, 80, 10)
+    const saveScoreButtonText = this.add.text(0, 0, 'Save Score', {
+      fontSize: '32px',
+      color: '#ffffff',
+      fontFamily: 'Arial',
+      fontStyle: 'bold',
+    }).setOrigin(0.5)
+    this.saveScoreButton = this.add.container(
+      GameSettings.canvas.width / 2,
+      GameSettings.canvas.height / 2 + 50,
+      [saveScoreButtonBg, saveScoreButtonText]
+    )
+      .setDepth(2001)
+      .setVisible(false)
+      .setInteractive({
+        hitArea: new Phaser.Geom.Rectangle(-150, -40, 300, 80),
+        hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+        useHandCursor: true
+      })
+      .on('pointerdown', () => this.saveScore())
   }
 
   /**
@@ -601,6 +727,194 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
+   * Create a yellow flashing warning overlay for a column at risk
+   */
+  private createColumnWarning(columnIndex: number): void {
+    // Don't create if already exists
+    if (this.columnWarnings.has(columnIndex)) return
+
+    // Calculate column X position
+    const columnX = ColumnManager.GRID_OFFSET_X + (columnIndex * ColumnManager.COLUMN_WIDTH)
+
+    // Create orange-yellow rectangle covering the full column
+    const warningRect = this.add
+      .rectangle(
+        columnX,
+        0,
+        ColumnManager.COLUMN_WIDTH,
+        GameSettings.canvas.height,
+        0xffaa00, // Orange-yellow (more red than pure yellow)
+        0.6 // More opaque for visibility
+      )
+      .setOrigin(0, 0)
+      .setDepth(500) // Above blocks, below UI
+
+    // Add flashing animation
+    this.tweens.add({
+      targets: warningRect,
+      alpha: { from: 0.6, to: 0 },
+      duration: 300,
+      yoyo: true,
+      repeat: -1, // Infinite repeat
+    })
+
+    // Store the warning
+    this.columnWarnings.set(columnIndex, warningRect)
+  }
+
+  /**
+   * Hide and remove a column warning
+   */
+  private hideColumnWarning(columnIndex: number): void {
+    const warning = this.columnWarnings.get(columnIndex)
+    if (!warning) return
+
+    // Stop animation
+    this.tweens.killTweensOf(warning)
+
+    // Destroy and remove
+    warning.destroy()
+    this.columnWarnings.delete(columnIndex)
+  }
+
+  /**
+   * Check if any columns are over height (lose condition)
+   * Updates the columnsAtRisk set with columns that are too tall
+   * @returns true if any column is at risk
+   */
+  private checkLoseCondition(): boolean {
+    if (!this.columnManager) return false
+
+    // Clear previous at-risk columns
+    const previousAtRisk = new Set(this.columnsAtRisk)
+    this.columnsAtRisk.clear()
+
+    // Check each column
+    for (let col = 0; col < ColumnManager.COLUMNS; col++) {
+      const column = this.columnManager.getColumn(col)
+      if (!column) continue
+
+      const blocksAtRest = column.getBlocksAtRest()
+      if (blocksAtRest.length === 0) continue
+
+      // Get the topmost block (first in sorted array)
+      const topmostBlock = blocksAtRest[0]
+
+      // Check if block is at or above the grid top line
+      if (topmostBlock.y <= ColumnManager.GRID_OFFSET_Y) {
+        this.columnsAtRisk.add(col)
+      }
+    }
+
+    // Update column warnings based on changes
+    // Add warnings for newly at-risk columns
+    for (const col of this.columnsAtRisk) {
+      if (!previousAtRisk.has(col)) {
+        this.createColumnWarning(col)
+      }
+    }
+
+    // Remove warnings for columns no longer at risk
+    for (const col of previousAtRisk) {
+      if (!this.columnsAtRisk.has(col)) {
+        this.hideColumnWarning(col)
+      }
+    }
+
+    return this.columnsAtRisk.size > 0
+  }
+
+  /**
+   * Trigger game over - show game over overlay
+   */
+  private triggerGameOver(): void {
+    // Pause the game
+    this.isPaused = true
+
+    // Stop game systems
+    this.blockSpawner.stop()
+    this.inputManager.setEnabled(false)
+    this.physics.pause()
+
+    // Stop grey block safety check
+    if (this.greyBlockSafetyTimer) {
+      this.greyBlockSafetyTimer.paused = true
+    }
+
+    // Stop all lose condition timers
+    for (const timer of this.loseConditionTimers.values()) {
+      timer.remove()
+    }
+    this.loseConditionTimers.clear()
+
+    // Show game over overlay
+    this.gameOverOverlay.setVisible(true)
+    this.gameOverTitle.setVisible(true)
+    this.saveScoreButton.setVisible(true)
+
+    // Only show Load from Save button if we have a saved game
+    if (this.hasSavedGame && this.savedGameState) {
+      this.loadFromSaveButton.setVisible(true)
+    }
+
+    // Hide pause button
+    this.pauseButton.setVisible(false)
+  }
+
+  /**
+   * Load from saved game state
+   */
+  private loadFromSave(): void {
+    if (!this.savedGameState) {
+      console.error('No saved game state available')
+      return
+    }
+
+    // Hide game over overlay
+    this.gameOverOverlay.setVisible(false)
+    this.gameOverTitle.setVisible(false)
+    this.loadFromSaveButton.setVisible(false)
+    this.saveScoreButton.setVisible(false)
+
+    // Hide all column warnings and clear timers
+    for (const col of this.columnsAtRisk) {
+      this.hideColumnWarning(col)
+    }
+    this.columnsAtRisk.clear()
+
+    // Clear all lose condition timers
+    for (const timer of this.loseConditionTimers.values()) {
+      timer.remove()
+    }
+    this.loseConditionTimers.clear()
+
+    // Load the saved state
+    this.loadGameState(this.savedGameState)
+
+    // Resume the game
+    this.isPaused = false
+    this.blockSpawner.start()
+    this.inputManager.setEnabled(true)
+    this.physics.resume()
+
+    // Resume grey block safety check
+    if (this.greyBlockSafetyTimer) {
+      this.greyBlockSafetyTimer.paused = false
+    }
+
+    // Show pause button
+    this.pauseButton.setVisible(true)
+  }
+
+  /**
+   * Save score (placeholder for future implementation)
+   */
+  private saveScore(): void {
+    // TODO: Implement score saving logic
+    console.log('Save score clicked - not yet implemented')
+  }
+
+  /**
    * Pause the game
    */
   private pauseGame(): void {
@@ -614,6 +928,11 @@ export class GameScene extends Phaser.Scene {
     // Stop grey block safety check
     if (this.greyBlockSafetyTimer) {
       this.greyBlockSafetyTimer.paused = true
+    }
+
+    // Pause all lose condition timers
+    for (const timer of this.loseConditionTimers.values()) {
+      timer.paused = true
     }
 
     // Show pause menu
@@ -638,6 +957,11 @@ export class GameScene extends Phaser.Scene {
     // Resume grey block safety check
     if (this.greyBlockSafetyTimer) {
       this.greyBlockSafetyTimer.paused = false
+    }
+
+    // Resume all lose condition timers
+    for (const timer of this.loseConditionTimers.values()) {
+      timer.paused = false
     }
 
     // Hide pause menu
@@ -734,6 +1058,20 @@ export class GameScene extends Phaser.Scene {
       saveState.g = savedGroups
     }
 
+    // Serialize lose condition timers
+    if (this.loseConditionTimers.size > 0) {
+      const loseConditionTimers: { [column: number]: number } = {}
+      for (const [col, timer] of this.loseConditionTimers.entries()) {
+        const remaining = timer.getRemaining()
+        if (remaining > 0) {
+          loseConditionTimers[col] = Math.round(remaining)
+        }
+      }
+      if (Object.keys(loseConditionTimers).length > 0) {
+        saveState.lct = loseConditionTimers
+      }
+    }
+
     return saveState
   }
 
@@ -750,6 +1088,10 @@ export class GameScene extends Phaser.Scene {
       const gameState = this.serializeGameState()
       await window.FarcadeSDK.singlePlayer.actions.saveGameState({ gameState })
       console.log('Game saved successfully', gameState)
+
+      // Track that we have a saved game
+      this.hasSavedGame = true
+      this.savedGameState = gameState
 
       // Update button to show success feedback
       const buttonText = this.saveButton.getAt(1) as Phaser.GameObjects.Text
@@ -863,6 +1205,31 @@ export class GameScene extends Phaser.Scene {
             group.setBoostCount(savedGroup.bc)
           }
           this.columnManager.addGroup(group)
+        }
+      }
+    }
+
+    // Restore lose condition timers
+    if (saveState.lct) {
+      for (const [colStr, remainingTime] of Object.entries(saveState.lct)) {
+        const col = parseInt(colStr)
+        if (remainingTime > 0) {
+          // Recreate the timer with remaining time
+          const timer = this.time.addEvent({
+            delay: remainingTime,
+            callback: () => {
+              this.triggerGameOver()
+            },
+            callbackScope: this,
+            loop: false,
+          })
+          this.loseConditionTimers.set(col, timer)
+
+          // Add the column to at-risk set
+          this.columnsAtRisk.add(col)
+
+          // Recreate the column warning
+          this.createColumnWarning(col)
         }
       }
     }
