@@ -337,8 +337,9 @@ export class BlockGroup {
       this.setVelocity(this.velocityY);
     }
 
-    // Take the maximum boost count from the merging groups
-    this.boostCount = Math.max(this.boostCount, otherGroup.getBoostCount());
+    // Take the maximum boost count from the merging groups and add 1
+    // This rewards merging groups and encourages strategic play
+    this.boostCount = Math.max(this.boostCount, otherGroup.getBoostCount()) + 1;
 
     // Fix any Y-position drift from floating-point calculations
     this.realignBlocks();
