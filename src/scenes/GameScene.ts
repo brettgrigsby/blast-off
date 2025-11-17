@@ -645,6 +645,19 @@ export class GameScene extends Phaser.Scene {
       const gameState = this.serializeGameState()
       await window.FarcadeSDK.singlePlayer.actions.saveGameState({ gameState })
       console.log('Game saved successfully', gameState)
+
+      // Update button to show success feedback
+      const buttonText = this.saveButton.getAt(1) as Phaser.GameObjects.Text
+
+      // Update text and color
+      buttonText.setText('SAVED!')
+      buttonText.setColor('#00ff00')
+
+      // Reset button after 1 second
+      this.time.delayedCall(1000, () => {
+        buttonText.setText('Save Game')
+        buttonText.setColor('#ffffff')
+      })
     } catch (error) {
       console.error('Failed to save game:', error)
     }
