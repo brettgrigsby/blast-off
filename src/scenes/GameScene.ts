@@ -52,6 +52,7 @@ export class GameScene extends Phaser.Scene {
 
   // Grey block recovery tracking
   private blocksReadyToRecover: Block[] = []
+  private greyBlockSafetyTimer: Phaser.Time.TimerEvent | null = null
 
   // Pause state
   private isPaused: boolean = false
@@ -448,6 +449,9 @@ export class GameScene extends Phaser.Scene {
     // Create block dump warning indicators (hidden initially)
     this.createWarningIndicators()
 
+    // Start grey block safety check timer
+    this.startGreyBlockSafetyCheck()
+
     // Create pause menu overlay (hidden initially)
     this.pauseOverlay = this.add
       .rectangle(0, 0, GameSettings.canvas.width, GameSettings.canvas.height, 0x000000, 0.8)
@@ -558,6 +562,45 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
+   * Start periodic safety check for grey blocks
+   * Ensures all grey blocks at rest have recovery timers
+   */
+  private startGreyBlockSafetyCheck(): void {
+    // Run safety check every 2 seconds
+    this.greyBlockSafetyTimer = this.time.addEvent({
+      delay: 2000,
+      callback: this.checkGreyBlockTimers,
+      callbackScope: this,
+      loop: true,
+    })
+  }
+
+  /**
+   * Safety check: Ensure all grey blocks at rest have recovery timers
+   */
+  private checkGreyBlockTimers(): void {
+    if (!this.columnManager) return
+
+    const allBlocks = this.columnManager.getAllBlocks()
+
+    for (const block of allBlocks) {
+      // Only check grey blocks that are at rest and don't have a timer
+      if (block.isGrey() && block.isAtRest() && !block.greyRecoveryTimer) {
+        // Start recovery timer
+        block.greyRecoveryTimer = this.time.addEvent({
+          delay: Block.GREY_RECOVERY_DELAY,
+          callback: () => {
+            this.blocksReadyToRecover.push(block)
+            block.greyRecoveryTimer = null
+          },
+          callbackScope: this,
+          loop: false
+        })
+      }
+    }
+  }
+
+  /**
    * Pause the game
    */
   private pauseGame(): void {
@@ -567,6 +610,11 @@ export class GameScene extends Phaser.Scene {
     this.blockSpawner.stop()
     this.inputManager.setEnabled(false)
     this.physics.pause()
+
+    // Stop grey block safety check
+    if (this.greyBlockSafetyTimer) {
+      this.greyBlockSafetyTimer.paused = true
+    }
 
     // Show pause menu
     this.pauseOverlay.setVisible(true)
@@ -586,6 +634,11 @@ export class GameScene extends Phaser.Scene {
     this.blockSpawner.start()
     this.inputManager.setEnabled(true)
     this.physics.resume()
+
+    // Resume grey block safety check
+    if (this.greyBlockSafetyTimer) {
+      this.greyBlockSafetyTimer.paused = false
+    }
 
     // Hide pause menu
     this.pauseOverlay.setVisible(false)
