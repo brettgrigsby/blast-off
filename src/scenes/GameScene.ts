@@ -744,7 +744,7 @@ export class GameScene extends Phaser.Scene {
         ColumnManager.COLUMN_WIDTH,
         GameSettings.canvas.height,
         0xffaa00, // Orange-yellow (more red than pure yellow)
-        0.6 // More opaque for visibility
+        0.5 // More opaque for visibility
       )
       .setOrigin(0, 0)
       .setDepth(500) // Above blocks, below UI
@@ -752,7 +752,7 @@ export class GameScene extends Phaser.Scene {
     // Add flashing animation
     this.tweens.add({
       targets: warningRect,
-      alpha: { from: 0.6, to: 0 },
+      alpha: { from: 0.5, to: 0 },
       duration: 300,
       yoyo: true,
       repeat: -1, // Infinite repeat
@@ -1268,12 +1268,26 @@ export class GameScene extends Phaser.Scene {
    */
   private populateStartingBlocks(): void {
     // Add 3 blocks to each column at the bottom (rows 9, 10, 11)
+    // Use ColorAssigner to prevent initial matches
     for (let col = 0; col < ColumnManager.COLUMNS; col++) {
       for (let row = ColumnManager.ROWS - 3; row < ColumnManager.ROWS; row++) {
-        const color = Block.getRandomColor()
+        // Get colors that won't create a match at this position
+        const safeColors = this.colorAssigner.getSafeColors(col, row)
+
+        // Pick a random safe color, or fallback to any random color if none are safe
+        const color = safeColors.length > 0
+          ? safeColors[Math.floor(Math.random() * safeColors.length)]
+          : Block.getRandomColor()
+
         const { y } = this.columnManager.gridToPixel(col, row)
         this.columnManager.addBlock(col, y, color)
       }
+    }
+
+    // Verify no matches exist (safety check)
+    const initialMatches = this.matchDetector.detectMatches()
+    if (initialMatches.length > 0) {
+      console.warn(`Warning: ${initialMatches.length} blocks in initial matches detected!`)
     }
   }
 }
