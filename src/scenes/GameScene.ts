@@ -94,7 +94,8 @@ export class GameScene extends Phaser.Scene {
     const groups = this.columnManager.getGroups()
     for (const group of groups) {
       // Check if group is fully above screen -> remove entire group
-      if (group.isFullyAboveScreen()) {
+      // Only remove if moving upward or stationary - falling groups (velocityY > 0) are kept
+      if (group.isFullyAboveScreen() && group.getVelocity() <= 0) {
         groupsToRemove.push(group)
         continue
       }
@@ -125,8 +126,9 @@ export class GameScene extends Phaser.Scene {
       }
 
       // Remove individual blocks from group if they go above screen
+      // Only remove if moving upward or stationary - falling blocks (velocityY > 0) are kept
       for (const block of group.getBlocks()) {
-        if (block.isAboveScreen()) {
+        if (block.isAboveScreen() && block.velocityY <= 0) {
           group.removeBlock(block)
           this.columnManager.removeBlock(block)
           this.blocksRemoved++
@@ -180,7 +182,8 @@ export class GameScene extends Phaser.Scene {
       }
 
       // Check if block is above screen and should be removed
-      if (block.isAboveScreen()) {
+      // Only remove if moving upward or stationary - falling blocks (velocityY > 0) are kept
+      if (block.isAboveScreen() && block.velocityY <= 0) {
         blocksToRemove.push(block)
         continue
       }

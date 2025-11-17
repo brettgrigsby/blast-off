@@ -138,10 +138,10 @@ export class BlockSpawner {
     // Clamp cols to grid width
     const actualCols = Math.min(cols, ColumnManager.COLUMNS);
 
-    // Calculate starting Y position just above the grid
-    // Blocks are removed if y < -50, so start at -40 to be safe
-    // Then stack downward (increasing Y) with full row height spacing
-    const startY = -40;
+    // Spawn blocks well above the screen to avoid collisions with existing blocks
+    // The removal logic now checks velocity, so falling blocks won't be removed
+    // Stack rows from top to bottom with full row height spacing
+    const startY = -600;
 
     // Create grey blocks in a grid pattern
     for (let row = 0; row < rows; row++) {
