@@ -9,6 +9,7 @@ export class InputManager {
   // Drag state
   private isDragging: boolean = false;
   private selectedBlock: Block | null = null;
+  private hasSwappedThisDrag: boolean = false;
 
   // Input enabled state
   private enabled: boolean = true;
@@ -54,6 +55,7 @@ export class InputManager {
       if (clickedBlock.isInGrid || blockGroup) {
         this.isDragging = true;
         this.selectedBlock = clickedBlock;
+        this.hasSwappedThisDrag = false; // Reset swap flag for new drag
 
         // Mark block as selected (it will render with highlight)
         clickedBlock.setSelected(true);
@@ -92,8 +94,8 @@ export class InputManager {
     // Find physically adjacent block in the drag direction
     const adjacentBlock = this.findAdjacentBlock(this.selectedBlock, direction);
     if (!adjacentBlock) {
-      // If dragging UP (direction === -1) and no block above, shoot block up
-      if (direction === -1) {
+      // If dragging UP (direction === -1), no block above, and haven't swapped yet, shoot block up
+      if (direction === -1 && !this.hasSwappedThisDrag) {
         this.shootBlockUp(this.selectedBlock);
         this.handlePointerUp();
       }
@@ -297,10 +299,14 @@ export class InputManager {
     // Zero out velocities after swap to ensure clean match detection
     block.setVelocity(0);
     targetBlock.setVelocity(0);
+
+    // Mark that a swap occurred during this drag
+    this.hasSwappedThisDrag = true;
   }
 
   /**
    * Shoot a block upward at high speed when dragged up with no block above.
+   * Only works if the block hasn't been swapped during the current drag.
    * The block will join any group it encounters in the same column.
    * @param block The block to shoot upward
    */
