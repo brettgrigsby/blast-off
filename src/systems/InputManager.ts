@@ -92,7 +92,12 @@ export class InputManager {
     // Find physically adjacent block in the drag direction
     const adjacentBlock = this.findAdjacentBlock(this.selectedBlock, direction);
     if (!adjacentBlock) {
-      return; // No adjacent block found
+      // If dragging UP (direction === -1) and no block above, shoot block up
+      if (direction === -1) {
+        this.shootBlockUp(this.selectedBlock);
+        this.handlePointerUp();
+      }
+      return;
     }
 
     // Calculate the halfway point between the blocks
@@ -292,6 +297,28 @@ export class InputManager {
     // Zero out velocities after swap to ensure clean match detection
     block.setVelocity(0);
     targetBlock.setVelocity(0);
+  }
+
+  /**
+   * Shoot a block upward at high speed when dragged up with no block above.
+   * The block will join any group it encounters in the same column.
+   * @param block The block to shoot upward
+   */
+  private shootBlockUp(block: Block): void {
+    const SHOOT_VELOCITY = -1800; // pixels/second (negative = upward)
+
+    // Remove from column grid
+    this.columnManager.removeBlockFromColumn(block);
+    block.isInGrid = false;
+
+    // Apply high upward velocity
+    block.setVelocity(SHOOT_VELOCITY);
+
+    // The existing GameScene.update() logic will handle:
+    // 1. Block movement upward
+    // 2. Detecting nearby groups
+    // 3. Adding block to group if close enough
+    // 4. Removing block if it goes above screen
   }
 
   /**
