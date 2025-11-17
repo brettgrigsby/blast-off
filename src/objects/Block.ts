@@ -47,6 +47,9 @@ export class Block {
   // Grey block recovery constant
   public static readonly GREY_RECOVERY_DELAY = 2000; // 2 seconds in milliseconds
 
+  // Velocity threshold for snapping to zero
+  private static readonly VELOCITY_THRESHOLD = 0.1; // pixels/second - velocities below this are treated as zero
+
   // Visual constants
   private static readonly BLOCK_WIDTH = 80;
   private static readonly BLOCK_HEIGHT = 80;
@@ -193,9 +196,15 @@ export class Block {
 
   /**
    * Set the block's velocity
+   * Snaps very small velocities to exactly zero to prevent floating-point drift
    */
   public setVelocity(velocityY: number): void {
-    this.velocityY = velocityY;
+    // Snap very small velocities to exactly zero
+    if (Math.abs(velocityY) < Block.VELOCITY_THRESHOLD) {
+      this.velocityY = 0;
+    } else {
+      this.velocityY = velocityY;
+    }
   }
 
   /**

@@ -288,6 +288,10 @@ export class InputManager {
     // Re-add blocks to columns so they get sorted by new Y position
     this.columnManager.addBlockToColumn(block);
     this.columnManager.addBlockToColumn(targetBlock);
+
+    // Zero out velocities after swap to ensure clean match detection
+    block.setVelocity(0);
+    targetBlock.setVelocity(0);
   }
 
   /**

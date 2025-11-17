@@ -274,7 +274,7 @@ export class GridManager {
     // Snap to grid position
     const { x, y } = this.gridToPixel(column, row);
     block.setPosition(x, y);
-    block.setVelocity(0, 0);
+    block.setVelocity(0);
     block.isInGrid = true;
 
     // Add to grid
