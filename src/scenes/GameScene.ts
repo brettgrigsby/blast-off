@@ -60,6 +60,10 @@ export class GameScene extends Phaser.Scene {
   private saveButton!: Phaser.GameObjects.Container
   private resumeButton!: Phaser.GameObjects.Container
 
+  // Block dump warning indicators
+  private warningLeft!: Phaser.GameObjects.Container
+  private warningRight!: Phaser.GameObjects.Container
+
   constructor() {
     super({ key: 'GameScene' })
   }
@@ -439,6 +443,9 @@ export class GameScene extends Phaser.Scene {
       })
       .on('pointerdown', () => this.pauseGame())
 
+    // Create block dump warning indicators (hidden initially)
+    this.createWarningIndicators()
+
     // Create pause menu overlay (hidden initially)
     this.pauseOverlay = this.add
       .rectangle(0, 0, GameSettings.canvas.width, GameSettings.canvas.height, 0x000000, 0.8)
@@ -503,6 +510,76 @@ export class GameScene extends Phaser.Scene {
     if (this.scoreText) {
       this.scoreText.setText(`${this.blocksRemoved}`)
     }
+  }
+
+  /**
+   * Create warning indicators for block dump
+   */
+  private createWarningIndicators(): void {
+    // Create left warning indicator
+    const leftCircle = this.add.graphics()
+    leftCircle.fillStyle(0xff0000, 1)
+    leftCircle.fillCircle(0, 0, 25)
+
+    const leftText = this.add.text(0, 0, '!', {
+      fontSize: '48px',
+      color: '#ffffff',
+      fontFamily: 'Arial',
+      fontStyle: 'bold',
+    }).setOrigin(0.5)
+
+    this.warningLeft = this.add.container(40, 40, [leftCircle, leftText])
+      .setDepth(1000)
+      .setVisible(false)
+
+    // Create right warning indicator
+    const rightCircle = this.add.graphics()
+    rightCircle.fillStyle(0xff0000, 1)
+    rightCircle.fillCircle(0, 0, 25)
+
+    const rightText = this.add.text(0, 0, '!', {
+      fontSize: '48px',
+      color: '#ffffff',
+      fontFamily: 'Arial',
+      fontStyle: 'bold',
+    }).setOrigin(0.5)
+
+    this.warningRight = this.add.container(GameSettings.canvas.width - 40, 40, [rightCircle, rightText])
+      .setDepth(1000)
+      .setVisible(false)
+  }
+
+  /**
+   * Show dump warning indicators with flashing animation
+   */
+  public showDumpWarning(): void {
+    if (!this.warningLeft || !this.warningRight) return
+
+    this.warningLeft.setVisible(true)
+    this.warningRight.setVisible(true)
+
+    // Create flashing animation (fade between 0.3 and 1.0 alpha)
+    this.tweens.add({
+      targets: [this.warningLeft, this.warningRight],
+      alpha: { from: 1, to: 0.3 },
+      duration: 300,
+      yoyo: true,
+      repeat: -1, // Infinite repeat
+    })
+  }
+
+  /**
+   * Hide dump warning indicators and stop animation
+   */
+  public hideDumpWarning(): void {
+    if (!this.warningLeft || !this.warningRight) return
+
+    // Stop all tweens on the warning containers
+    this.tweens.killTweensOf([this.warningLeft, this.warningRight])
+
+    // Reset alpha and hide
+    this.warningLeft.setAlpha(1).setVisible(false)
+    this.warningRight.setAlpha(1).setVisible(false)
   }
 
   /**
