@@ -792,6 +792,21 @@ export class GameScene extends Phaser.Scene {
           callbackScope: this,
           loop: false
         })
+      } else if (color === BlockColor.GREY && velocity === 0) {
+        // Grey block at rest with no timer - start recovery timer immediately
+        // This handles dump blocks and other grey blocks that were saved before their timer started
+        block.greyRecoveryTimer = this.time.addEvent({
+          delay: Block.GREY_RECOVERY_DELAY,
+          callback: () => {
+            this.blocksReadyToRecover.push(block)
+            block.greyRecoveryTimer = null
+          },
+          callbackScope: this,
+          loop: false
+        })
+      } else if (color === BlockColor.GREY && velocity !== 0) {
+        // Grey block still moving - mark as moving so timer starts when it lands
+        block.wasMovingLastFrame = true
       }
 
       // Restore original match block status and show flame
