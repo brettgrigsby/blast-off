@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { Block, BlockColor } from '../objects/Block';
 import { ColumnManager } from './ColumnManager';
 import type { GameScene } from '../scenes/GameScene';
+import { DumpShapeGenerator, type DumpShape } from './DumpShapeGenerator';
 
 export class BlockSpawner {
   private scene: GameScene;
@@ -16,8 +17,7 @@ export class BlockSpawner {
   private static readonly WARNING_DURATION = 3000; // milliseconds (3 seconds warning)
   private dumpTimer: Phaser.Time.TimerEvent | null = null;
   private warningTimer: Phaser.Time.TimerEvent | null = null;
-  private pendingDumpRows: number = 0;
-  private pendingDumpCols: number = 0;
+  private pendingDumpShape: DumpShape | null = null;
 
   constructor(scene: GameScene, columnManager: ColumnManager) {
     this.scene = scene;
@@ -39,11 +39,14 @@ export class BlockSpawner {
       loop: true,
     });
 
-    // Start dump timer (for testing: 9x2 dump every 10 seconds)
+    // Start dump timer (generates random shapes every 10 seconds)
     if (!this.dumpTimer) {
       this.dumpTimer = this.scene.time.addEvent({
         delay: BlockSpawner.DUMP_INTERVAL,
-        callback: () => this.scheduleDump(2, 9), // 2 rows x 9 columns
+        callback: () => {
+          const randomShape = DumpShapeGenerator.generateRandomShape();
+          this.scheduleDump(randomShape);
+        },
         callbackScope: this,
         loop: true,
       });
@@ -93,17 +96,15 @@ export class BlockSpawner {
 
   /**
    * Schedule a block dump with a 3-second warning
-   * @param rows Number of rows to dump
-   * @param cols Number of columns to dump
+   * @param shape The dump shape to spawn
    */
-  public scheduleDump(rows: number, cols: number): void {
+  public scheduleDump(shape: DumpShape): void {
     if (this.warningTimer) {
       return; // Already have a dump pending
     }
 
-    // Store dump dimensions
-    this.pendingDumpRows = rows;
-    this.pendingDumpCols = cols;
+    // Store dump shape
+    this.pendingDumpShape = shape;
 
     // Show warning
     this.triggerWarning();
@@ -121,7 +122,10 @@ export class BlockSpawner {
       delay: BlockSpawner.WARNING_DURATION,
       callback: () => {
         this.scene.hideDumpWarning();
-        this.executeDump(this.pendingDumpRows, this.pendingDumpCols);
+        if (this.pendingDumpShape) {
+          this.executeDump(this.pendingDumpShape);
+          this.pendingDumpShape = null;
+        }
         this.warningTimer = null;
       },
       callbackScope: this,
@@ -130,23 +134,26 @@ export class BlockSpawner {
   }
 
   /**
-   * Execute the block dump - spawns a grid of grey blocks
-   * @param rows Number of rows to dump
-   * @param cols Number of columns to dump
+   * Execute the block dump - spawns grey blocks based on the provided shape
+   * @param shape The dump shape defining column heights
    */
-  private executeDump(rows: number, cols: number): void {
-    // Clamp cols to grid width
-    const actualCols = Math.min(cols, ColumnManager.COLUMNS);
-
+  private executeDump(shape: DumpShape): void {
     // Spawn blocks well above the screen to avoid collisions with existing blocks
     // The removal logic now checks velocity, so falling blocks won't be removed
-    // Stack rows from top to bottom with full row height spacing
-    const startY = -600;
+    const baseY = -600;
 
-    // Create grey blocks in a grid pattern
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < actualCols; col++) {
-        const yPos = startY + (row * ColumnManager.ROW_HEIGHT);
+    // For each column in the shape, create blocks according to the height
+    for (let col = 0; col < shape.length; col++) {
+      const height = shape[col];
+
+      // Skip columns with no blocks
+      if (height === 0) {
+        continue;
+      }
+
+      // Create the column of blocks from top to bottom
+      for (let row = 0; row < height; row++) {
+        const yPos = baseY + (row * ColumnManager.ROW_HEIGHT);
 
         // Add grey block with downward velocity
         this.columnManager.addBlock(col, yPos, BlockColor.GREY, 800);
