@@ -829,8 +829,9 @@ export class LevelScene extends Phaser.Scene {
    * Trigger game over - show game over overlay
    */
   private triggerGameOver(): void {
-    // Don't trigger game over in background mode
+    // In background mode, restart the scene instead of showing game over
     if (this.isBackgroundMode) {
+      this.scene.restart({ backgroundMode: true })
       return
     }
 
