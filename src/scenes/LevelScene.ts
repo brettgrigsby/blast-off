@@ -17,6 +17,7 @@ declare global {
 
 export class LevelScene extends Phaser.Scene {
   private isMultiplayer: boolean = false
+  private isBackgroundMode: boolean = false
   private columnManager!: ColumnManager
   private gridLinesGraphics!: Phaser.GameObjects.Graphics
   private blockSpawner!: BlockSpawner
@@ -57,7 +58,11 @@ export class LevelScene extends Phaser.Scene {
     super({ key: 'LevelScene' })
   }
 
-  create(): void {
+  create(data?: { backgroundMode?: boolean }): void {
+    // Check if running in background mode
+    if (data?.backgroundMode) {
+      this.isBackgroundMode = true
+    }
     this.initializeSDK()
   }
 
@@ -542,6 +547,16 @@ export class LevelScene extends Phaser.Scene {
 
     // Create game over overlay (hidden initially)
     this.createGameOverOverlay()
+
+    // Configure for background mode if needed
+    if (this.isBackgroundMode) {
+      // Hide UI elements
+      this.scoreText.setVisible(false)
+      this.pauseButton.setVisible(false)
+
+      // Disable input
+      this.inputManager.setEnabled(false)
+    }
   }
 
   /**
@@ -814,6 +829,11 @@ export class LevelScene extends Phaser.Scene {
    * Trigger game over - show game over overlay
    */
   private triggerGameOver(): void {
+    // Don't trigger game over in background mode
+    if (this.isBackgroundMode) {
+      return
+    }
+
     // Pause the game
     this.isPaused = true
 

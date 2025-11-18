@@ -86,8 +86,11 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private showTitleScreen(): void {
-    // Set gray background
-    this.cameras.main.setBackgroundColor('#808080')
+    // Launch LevelScene in background mode
+    this.scene.launch('LevelScene', { backgroundMode: true })
+
+    // Bring TitleScene to top to ensure buttons receive input
+    this.scene.bringToTop()
 
     // Create title image
     const titleImage = this.add
@@ -145,7 +148,10 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private startGame(): void {
-    // Start the level scene
+    // Stop the background LevelScene instance
+    this.scene.stop('LevelScene')
+
+    // Start a fresh LevelScene for actual gameplay
     this.scene.start('LevelScene')
   }
 
