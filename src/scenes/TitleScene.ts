@@ -46,6 +46,12 @@ export class TitleScene extends Phaser.Scene {
         frameHeight: 20,
       }
     )
+
+    // Load title image
+    this.load.image(
+      'titleText',
+      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/title-text-00WTyXV27hfvPVNtYGTfPhPXuqH2qh.webp?00Bt'
+    )
   }
 
   async create(): Promise<void> {
@@ -80,20 +86,18 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private showTitleScreen(): void {
-    // Create title text
-    const titleText = this.add
-      .text(
+    // Set gray background
+    this.cameras.main.setBackgroundColor('#808080')
+
+    // Create title image
+    const titleImage = this.add
+      .image(
         GameSettings.canvas.width / 2,
         200,
-        'Block Booster',
-        {
-          fontSize: '72px',
-          color: '#ffffff',
-          fontFamily: 'Arial',
-          fontStyle: 'bold',
-        }
+        'titleText'
       )
       .setOrigin(0.5)
+      .setScale(0.7)
 
     // Create PLAY button
     const playButtonBg = this.add.graphics()

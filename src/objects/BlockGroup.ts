@@ -272,9 +272,6 @@ export class BlockGroup {
       this.velocityY = BlockGroup.MAX_DESCENT_VELOCITY;
     }
 
-    // Update velocity for all blocks
-    this.setVelocity(this.velocityY);
-
     // Calculate the velocity to apply for movement
     // Cap upward movement velocity while allowing stored velocity to remain uncapped
     // This lets gravity act on the full velocity while limiting how fast groups actually move up
@@ -283,9 +280,11 @@ export class BlockGroup {
       appliedVelocity = BlockGroup.MAX_UPWARD_VELOCITY;
     }
 
-    // Update each block's position as part of the rigid group
+    // Update each block's position and velocity as part of the rigid group
     // Don't call block.update() as that would apply individual gravity
+    // Set blocks' velocity to clamped value to prevent them from moving faster than max
     this.blocks.forEach(block => {
+      block.setVelocity(appliedVelocity);
       const newY = block.y + appliedVelocity * deltaSeconds;
       block.setPosition(block.x, newY);
     });
