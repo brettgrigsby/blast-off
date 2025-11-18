@@ -92,6 +92,12 @@ export class TitleScene extends Phaser.Scene {
     // Bring TitleScene to top to ensure buttons receive input
     this.scene.bringToTop()
 
+    // Add semi-transparent overlay to create blur/dimming effect over background game
+    this.add
+      .rectangle(0, 0, GameSettings.canvas.width, GameSettings.canvas.height, 0x000000, 0.4)
+      .setOrigin(0, 0)
+      .setDepth(0)
+
     // Create title image
     const titleImage = this.add
       .image(

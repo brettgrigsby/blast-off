@@ -556,6 +556,12 @@ export class LevelScene extends Phaser.Scene {
 
       // Disable input
       this.inputManager.setEnabled(false)
+
+      // Add blur effect to background game
+      const camera = this.cameras.main
+      if (camera.postFX) {
+        camera.postFX.addBlur(0, 0, 0, 2, 0xffffff, 3)
+      }
     }
   }
 
