@@ -164,6 +164,12 @@ export class GameScene extends Phaser.Scene {
         }
       }
 
+      // Apply grace period: don't disband if group recently transitioned from upward to downward
+      // This prevents premature disbanding when groups are at the apex of their trajectory
+      if (shouldDisband && group.isInGracePeriod()) {
+        shouldDisband = false
+      }
+
       if (shouldDisband) {
         // Disband group - place all blocks individually
         for (const block of group.getBlocks()) {
@@ -182,6 +188,16 @@ export class GameScene extends Phaser.Scene {
           }
         }
         groupsToRemove.push(group)
+      }
+    }
+
+    // Safety net: Recover orphaned blocks (blocks stuck with velocity=0, not in grid, not in group)
+    for (const block of this.columnManager.getAllBlocks()) {
+      // Detect orphaned blocks
+      if (block.velocityY === 0 && !block.isInGrid && !this.columnManager.getBlockGroup(block)) {
+        console.warn(`[ORPHAN RECOVERY] Fixing stuck block at column ${block.column}, y ${block.y}`)
+        // Force block to start falling
+        block.setVelocity(100)
       }
     }
 

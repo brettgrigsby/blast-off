@@ -40,18 +40,17 @@ export class BlockSpawner {
     });
 
     // Start dump timer (generates random shapes every 10 seconds)
-    // DISABLED FOR TESTING
-    // if (!this.dumpTimer) {
-    //   this.dumpTimer = this.scene.time.addEvent({
-    //     delay: BlockSpawner.DUMP_INTERVAL,
-    //     callback: () => {
-    //       const randomShape = DumpShapeGenerator.generateRandomShape();
-    //       this.scheduleDump(randomShape);
-    //     },
-    //     callbackScope: this,
-    //     loop: true,
-    //   });
-    // }
+    if (!this.dumpTimer) {
+      this.dumpTimer = this.scene.time.addEvent({
+        delay: BlockSpawner.DUMP_INTERVAL,
+        callback: () => {
+          const randomShape = DumpShapeGenerator.generateRandomShape();
+          this.scheduleDump(randomShape);
+        },
+        callbackScope: this,
+        loop: true,
+      });
+    }
   }
 
   /**
@@ -107,6 +106,11 @@ export class BlockSpawner {
     // Store dump shape
     this.pendingDumpShape = shape;
 
+    // Pause regular block spawning during dump
+    if (this.spawnTimer) {
+      this.spawnTimer.paused = true;
+    }
+
     // Show warning
     this.triggerWarning();
   }
@@ -128,6 +132,11 @@ export class BlockSpawner {
           this.pendingDumpShape = null;
         }
         this.warningTimer = null;
+
+        // Resume regular block spawning after dump completes
+        if (this.spawnTimer) {
+          this.spawnTimer.paused = false;
+        }
       },
       callbackScope: this,
       loop: false,

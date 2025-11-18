@@ -9,6 +9,10 @@ export class BlockGroup {
   private velocityY: number = 0;
   private boostCount: number = 0; // Number of times this group has been boosted by in-motion matches
 
+  // Grace period tracking for collision detection
+  private wasMovingUpward: boolean = false; // Track if group was recently moving upward
+  private framesMovingDownward: number = 0; // Frames since velocity became positive (downward)
+
   // Descent configuration
   private static readonly DESCENT_VELOCITY = 100; // pixels/second downward
   private static readonly MAX_DESCENT_VELOCITY = 70; // Maximum downward velocity for groups (much slower than new blocks at 1000 px/s)
@@ -252,6 +256,16 @@ export class BlockGroup {
     const effectiveGravity = BlockGroup.BASE_GRAVITY + (this.blocks.size * BlockGroup.MASS_GRAVITY_FACTOR);
     this.velocityY += effectiveGravity * deltaSeconds;
 
+    // Track velocity state transitions for grace period
+    if (this.velocityY < 0) {
+      // Moving upward
+      this.wasMovingUpward = true;
+      this.framesMovingDownward = 0;
+    } else if (this.velocityY > 0 && this.wasMovingUpward) {
+      // Just started moving downward after upward movement
+      this.framesMovingDownward++;
+    }
+
     // Cap downward velocity for descending groups (don't interfere with upward launches)
     // This prevents groups from falling as fast as new blocks
     if (this.velocityY > BlockGroup.MAX_DESCENT_VELOCITY) {
@@ -288,6 +302,14 @@ export class BlockGroup {
       }
     }
     return this.blocks.size > 0; // Must have at least one block
+  }
+
+  /**
+   * Check if group is in grace period (recently transitioned from upward to downward)
+   * During grace period, collision detection should be skipped to prevent premature disbanding
+   */
+  public isInGracePeriod(): boolean {
+    return this.wasMovingUpward && this.framesMovingDownward < 10;
   }
 
   /**
