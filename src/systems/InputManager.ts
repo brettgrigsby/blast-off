@@ -320,7 +320,7 @@ export class InputManager {
     // Apply high upward velocity
     block.setVelocity(SHOOT_VELOCITY);
 
-    // The existing GameScene.update() logic will handle:
+    // The existing LevelScene.update() logic will handle:
     // 1. Block movement upward
     // 2. Detecting nearby groups
     // 3. Adding block to group if close enough

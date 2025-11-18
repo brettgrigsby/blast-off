@@ -1,0 +1,152 @@
+import type { FarcadeSDK } from '@farcade/game-sdk'
+import GameSettings from '../config/GameSettings'
+
+declare global {
+  interface Window {
+    FarcadeSDK: FarcadeSDK
+  }
+}
+
+export class TitleScene extends Phaser.Scene {
+  private loadingText!: Phaser.GameObjects.Text
+
+  constructor() {
+    super({ key: 'TitleScene' })
+  }
+
+  preload(): void {
+    // Create loading text
+    this.loadingText = this.add
+      .text(
+        GameSettings.canvas.width / 2,
+        GameSettings.canvas.height / 2,
+        'Loading... 0%',
+        {
+          fontSize: '36px',
+          color: '#ffffff',
+          fontFamily: 'Arial',
+          fontStyle: 'bold',
+        }
+      )
+      .setOrigin(0.5)
+
+    // Update loading text as assets load
+    this.load.on('progress', (progress: number) => {
+      const percentage = Math.floor(progress * 100)
+      this.loadingText.setText(`Loading... ${percentage}%`)
+    })
+
+    // Load flame sprite sheet
+    // The sprite sheet is 60px wide x 20px tall, with 6 frames of 10x20 each
+    this.load.spritesheet(
+      'flame',
+      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/burning_loop_4-QL08GwOBzclITwWLDdZNG1G3QY8ZAb.webp?DW7A',
+      {
+        frameWidth: 10,
+        frameHeight: 20,
+      }
+    )
+  }
+
+  async create(): Promise<void> {
+    // Check for saved game state
+    const hasSavedGame = await this.checkForSavedGame()
+
+    // Remove loading text
+    this.loadingText.destroy()
+
+    // If there's a saved game, automatically start the level
+    if (hasSavedGame) {
+      this.scene.start('LevelScene')
+      return
+    }
+
+    // Otherwise, show the title screen
+    this.showTitleScreen()
+  }
+
+  private async checkForSavedGame(): Promise<boolean> {
+    if (!window.FarcadeSDK) {
+      return false
+    }
+
+    try {
+      const gameInfo = await window.FarcadeSDK.singlePlayer.actions.ready()
+      return !!(gameInfo?.initialGameState?.gameState)
+    } catch (error) {
+      console.error('Failed to check for saved game:', error)
+      return false
+    }
+  }
+
+  private showTitleScreen(): void {
+    // Create title text
+    const titleText = this.add
+      .text(
+        GameSettings.canvas.width / 2,
+        200,
+        'Block Booster',
+        {
+          fontSize: '72px',
+          color: '#ffffff',
+          fontFamily: 'Arial',
+          fontStyle: 'bold',
+        }
+      )
+      .setOrigin(0.5)
+
+    // Create PLAY button
+    const playButtonBg = this.add.graphics()
+      .lineStyle(2, 0xffffff, 1)
+      .strokeRoundedRect(-150, -50, 300, 100, 15)
+    const playButtonText = this.add.text(0, 0, 'PLAY', {
+      fontSize: '48px',
+      color: '#ffffff',
+      fontFamily: 'Arial',
+      fontStyle: 'bold',
+    }).setOrigin(0.5)
+    const playButton = this.add.container(
+      GameSettings.canvas.width / 2,
+      GameSettings.canvas.height / 2,
+      [playButtonBg, playButtonText]
+    )
+      .setInteractive({
+        hitArea: new Phaser.Geom.Rectangle(-150, -50, 300, 100),
+        hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+        useHandCursor: true,
+      })
+      .on('pointerdown', () => this.startGame())
+
+    // Create STORY MODE button
+    const storyButtonBg = this.add.graphics()
+      .lineStyle(2, 0xffffff, 1)
+      .strokeRoundedRect(-150, -50, 300, 100, 15)
+    const storyButtonText = this.add.text(0, 0, 'STORY MODE', {
+      fontSize: '48px',
+      color: '#ffffff',
+      fontFamily: 'Arial',
+      fontStyle: 'bold',
+    }).setOrigin(0.5)
+    const storyButton = this.add.container(
+      GameSettings.canvas.width / 2,
+      GameSettings.canvas.height / 2 + 150,
+      [storyButtonBg, storyButtonText]
+    )
+      .setInteractive({
+        hitArea: new Phaser.Geom.Rectangle(-150, -50, 300, 100),
+        hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+        useHandCursor: true,
+      })
+      .on('pointerdown', () => this.startStoryMode())
+  }
+
+  private startGame(): void {
+    // Start the level scene
+    this.scene.start('LevelScene')
+  }
+
+  private startStoryMode(): void {
+    // TODO: Implement story mode
+    console.log('Story mode not yet implemented')
+  }
+}

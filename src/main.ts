@@ -1,5 +1,6 @@
 import { initRemix } from "@insidethesim/remix-dev"
-import { GameScene } from "./scenes/GameScene"
+import { TitleScene } from "./scenes/TitleScene"
+import { LevelScene } from "./scenes/LevelScene"
 import GameSettings from "./config/GameSettings"
 
 // SDK mock is automatically initialized by the framework (dev-init.ts)
@@ -16,7 +17,7 @@ const config: Phaser.Types.Core.GameConfig = {
     height: GameSettings.canvas.height,
   },
   backgroundColor: "#1a1a1a",
-  scene: [GameScene],
+  scene: [TitleScene, LevelScene],
   physics: {
     default: "arcade",
   },

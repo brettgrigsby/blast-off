@@ -372,7 +372,7 @@ export class BlockGroup {
    */
   public shouldDisband(): boolean {
     // Group should disband if moving downward and any block would collide
-    // This will be checked by the GameScene collision detection
+    // This will be checked by the LevelScene collision detection
     return false; // Placeholder - actual logic handled externally
   }
 }

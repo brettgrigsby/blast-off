@@ -1,11 +1,11 @@
 import Phaser from 'phaser';
 import { Block, BlockColor } from '../objects/Block';
 import { ColumnManager } from './ColumnManager';
-import type { GameScene } from '../scenes/GameScene';
+import type { LevelScene } from '../scenes/LevelScene';
 import { DumpShapeGenerator, type DumpShape } from './DumpShapeGenerator';
 
 export class BlockSpawner {
-  private scene: GameScene;
+  private scene: LevelScene;
   private columnManager: ColumnManager;
   private spawnTimer: Phaser.Time.TimerEvent | null = null;
 
@@ -13,14 +13,14 @@ export class BlockSpawner {
   private static readonly SPAWN_RATE = 1000; // milliseconds (1 block per second)
 
   // Block dump configuration
-  private static readonly DUMP_INTERVAL = 10000; // milliseconds (dump every 10 seconds)
+  private static readonly DUMP_INTERVAL = 20000; // milliseconds (dump every 10 seconds)
   private static readonly WARNING_DURATION = 3000; // milliseconds (3 seconds warning)
   private static readonly RESUME_DELAY = 3000; // milliseconds (3 seconds delay before resuming regular spawning after dump)
   private dumpTimer: Phaser.Time.TimerEvent | null = null;
   private warningTimer: Phaser.Time.TimerEvent | null = null;
   private pendingDumpShape: DumpShape | null = null;
 
-  constructor(scene: GameScene, columnManager: ColumnManager) {
+  constructor(scene: LevelScene, columnManager: ColumnManager) {
     this.scene = scene;
     this.columnManager = columnManager;
   }

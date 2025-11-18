@@ -7,30 +7,7 @@ import { BlockSpawner } from '../systems/BlockSpawner'
 import { InputManager } from '../systems/InputManager'
 import { MatchDetector } from '../systems/MatchDetector'
 import { ColorAssigner } from '../systems/ColorAssigner'
-
-// Save state interface - compact format for minimal size
-interface SavedBlock {
-  c: number        // column (0-8)
-  y: number        // y position in pixels
-  co: number       // color index (0-5 for playable colors, 6 for grey)
-  v?: number       // velocityY (omit if 0)
-  rt?: number      // greyRecoveryTimer remaining ms (omit if null)
-  om?: boolean     // isOriginalMatchBlock (omit if false)
-}
-
-interface SavedGroup {
-  bi: number[]     // block indices (into blocks array)
-  v: number        // velocityY
-  bc?: number      // boostCount (omit if 0)
-}
-
-interface SaveState {
-  v: number        // version
-  s: number        // score (blocksRemoved)
-  b: SavedBlock[]  // blocks
-  g?: SavedGroup[] // groups (omit if empty)
-  lct?: { [column: number]: number } // loseConditionTimers: column -> remaining ms (omit if empty)
-}
+import { GameStateManager, type GameState } from '../systems/GameStateManager'
 
 declare global {
   interface Window {
@@ -38,7 +15,7 @@ declare global {
   }
 }
 
-export class GameScene extends Phaser.Scene {
+export class LevelScene extends Phaser.Scene {
   private isMultiplayer: boolean = false
   private columnManager!: ColumnManager
   private gridLinesGraphics!: Phaser.GameObjects.Graphics
@@ -74,19 +51,10 @@ export class GameScene extends Phaser.Scene {
   private loadFromSaveButton!: Phaser.GameObjects.Container
   private saveScoreButton!: Phaser.GameObjects.Container
   private hasSavedGame: boolean = false
-  private savedGameState: SaveState | null = null
+  private savedGameState: GameState | null = null
 
   constructor() {
-    super({ key: 'GameScene' })
-  }
-
-  preload(): void {
-    // Load flame sprite sheet
-    // The sprite sheet is 60px wide x 20px tall, with 6 frames of 10x20 each
-    this.load.spritesheet('flame', 'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/burning_loop_4-QL08GwOBzclITwWLDdZNG1G3QY8ZAb.webp?DW7A', {
-      frameWidth: 10,
-      frameHeight: 20
-    });
+    super({ key: 'LevelScene' })
   }
 
   create(): void {
@@ -410,10 +378,12 @@ export class GameScene extends Phaser.Scene {
 
         // Load saved game state if available
         if (gameInfo?.initialGameState?.gameState) {
-          const savedState = gameInfo.initialGameState.gameState as SaveState
+          const rawGameState = gameInfo.initialGameState.gameState
+          // Store the raw state (could be old or new format)
+          this.savedGameState = rawGameState as GameState
           this.hasSavedGame = true
-          this.savedGameState = savedState
-          this.loadGameState(savedState)
+          // Load it (deserialize handles both formats)
+          this.loadGameState(rawGameState)
         }
       } catch (error) {
         console.error('Failed to initialize single player SDK:', error)
@@ -988,110 +958,6 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Serialize the current game state to a compact format
-   */
-  private serializeGameState(): SaveState {
-    const allBlocks = this.columnManager.getAllBlocks()
-    const groups = this.columnManager.getGroups()
-
-    // Create a map of block -> index for group serialization
-    const blockIndexMap = new Map<Block, number>()
-
-    // Serialize blocks
-    const savedBlocks: SavedBlock[] = allBlocks.map((block, index) => {
-      blockIndexMap.set(block, index)
-
-      // Map color to index (0-5 for playable colors, 6 for grey)
-      let colorIndex: number
-      if (block.color === BlockColor.GREY) {
-        colorIndex = 6
-      } else {
-        colorIndex = PLAYABLE_COLORS.indexOf(block.color)
-        if (colorIndex === -1) {
-          // Fallback to 0 if color not found (should never happen)
-          colorIndex = 0
-        }
-      }
-
-      const savedBlock: SavedBlock = {
-        c: block.column,
-        y: Math.round(block.y), // Round to avoid floating point precision issues
-        co: colorIndex
-      }
-
-      // Only include velocityY if non-zero
-      if (block.velocityY !== 0) {
-        savedBlock.v = Math.round(block.velocityY)
-      }
-
-      // Only include recovery timer if active
-      if (block.greyRecoveryTimer) {
-        const remaining = block.greyRecoveryTimer.getRemaining()
-        savedBlock.rt = Math.round(remaining)
-      }
-
-      // Only include isOriginalMatchBlock if true
-      if (block.isOriginalMatchBlock) {
-        savedBlock.om = true
-      }
-
-      return savedBlock
-    })
-
-    // Serialize groups
-    const savedGroups: SavedGroup[] = []
-    for (const group of groups) {
-      const blockIndices: number[] = []
-      for (const block of group.getBlocks()) {
-        const index = blockIndexMap.get(block)
-        if (index !== undefined) {
-          blockIndices.push(index)
-        }
-      }
-
-      if (blockIndices.length > 0) {
-        const savedGroup: SavedGroup = {
-          bi: blockIndices,
-          v: Math.round(group.getVelocity())
-        }
-        // Only include boostCount if it's non-zero
-        const boostCount = group.getBoostCount()
-        if (boostCount > 0) {
-          savedGroup.bc = boostCount
-        }
-        savedGroups.push(savedGroup)
-      }
-    }
-
-    const saveState: SaveState = {
-      v: 1, // version
-      s: this.blocksRemoved,
-      b: savedBlocks
-    }
-
-    // Only include groups if there are any
-    if (savedGroups.length > 0) {
-      saveState.g = savedGroups
-    }
-
-    // Serialize lose condition timers
-    if (this.loseConditionTimers.size > 0) {
-      const loseConditionTimers: { [column: number]: number } = {}
-      for (const [col, timer] of this.loseConditionTimers.entries()) {
-        const remaining = timer.getRemaining()
-        if (remaining > 0) {
-          loseConditionTimers[col] = Math.round(remaining)
-        }
-      }
-      if (Object.keys(loseConditionTimers).length > 0) {
-        saveState.lct = loseConditionTimers
-      }
-    }
-
-    return saveState
-  }
-
-  /**
    * Save game using Farcade SDK
    */
   private async saveGame(): Promise<void> {
@@ -1101,7 +967,11 @@ export class GameScene extends Phaser.Scene {
     }
 
     try {
-      const gameState = this.serializeGameState()
+      const gameState = GameStateManager.serialize(
+        this.columnManager,
+        this.blocksRemoved,
+        this.loseConditionTimers
+      )
       await window.FarcadeSDK.singlePlayer.actions.saveGameState({ gameState })
       console.log('Game saved successfully', gameState)
 
@@ -1128,8 +998,16 @@ export class GameScene extends Phaser.Scene {
 
   /**
    * Load game state from saved data
+   * Accepts both old format (SaveState) and new format (GameState with currentLevel.boardState)
    */
-  private loadGameState(saveState: SaveState): void {
+  private loadGameState(data: any): void {
+    // Extract SaveState from the data (handles both old and new formats)
+    const saveState = GameStateManager.deserialize(data)
+    if (!saveState) {
+      console.error('Failed to deserialize game state')
+      return
+    }
+
     console.log('Loading game state', saveState)
 
     // Stop game systems temporarily
