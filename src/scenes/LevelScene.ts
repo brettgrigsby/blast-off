@@ -59,10 +59,8 @@ export class LevelScene extends Phaser.Scene {
   }
 
   create(data?: { backgroundMode?: boolean }): void {
-    // Check if running in background mode
-    if (data?.backgroundMode) {
-      this.isBackgroundMode = true
-    }
+    // Reset background mode (scene instance may be reused by Phaser)
+    this.isBackgroundMode = data?.backgroundMode === true
     this.initializeSDK()
   }
 
@@ -562,6 +560,9 @@ export class LevelScene extends Phaser.Scene {
       if (camera.postFX) {
         camera.postFX.addBlur(0, 0, 0, 2, 0xffffff, 3)
       }
+    } else {
+      // Make sure input is enabled for normal gameplay
+      this.inputManager.setEnabled(true)
     }
   }
 

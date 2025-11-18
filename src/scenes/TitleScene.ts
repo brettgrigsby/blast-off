@@ -92,12 +92,6 @@ export class TitleScene extends Phaser.Scene {
     // Bring TitleScene to top to ensure buttons receive input
     this.scene.bringToTop()
 
-    // Add semi-transparent overlay to create blur/dimming effect over background game
-    this.add
-      .rectangle(0, 0, GameSettings.canvas.width, GameSettings.canvas.height, 0x000000, 0.4)
-      .setOrigin(0, 0)
-      .setDepth(0)
-
     // Create title image
     const titleImage = this.add
       .image(
@@ -110,8 +104,10 @@ export class TitleScene extends Phaser.Scene {
 
     // Create PLAY button
     const playButtonBg = this.add.graphics()
-      .lineStyle(2, 0xffffff, 1)
-      .strokeRoundedRect(-150, -50, 300, 100, 15)
+      .fillStyle(0x000000, 0.85)
+      .fillRoundedRect(-200, -50, 400, 100, 15)
+      .lineStyle(3, 0xffffff, 1)
+      .strokeRoundedRect(-200, -50, 400, 100, 15)
     const playButtonText = this.add.text(0, 0, 'PLAY', {
       fontSize: '48px',
       color: '#ffffff',
@@ -124,7 +120,7 @@ export class TitleScene extends Phaser.Scene {
       [playButtonBg, playButtonText]
     )
       .setInteractive({
-        hitArea: new Phaser.Geom.Rectangle(-150, -50, 300, 100),
+        hitArea: new Phaser.Geom.Rectangle(-200, -50, 400, 100),
         hitAreaCallback: Phaser.Geom.Rectangle.Contains,
         useHandCursor: true,
       })
@@ -132,8 +128,10 @@ export class TitleScene extends Phaser.Scene {
 
     // Create STORY MODE button
     const storyButtonBg = this.add.graphics()
-      .lineStyle(2, 0xffffff, 1)
-      .strokeRoundedRect(-150, -50, 300, 100, 15)
+      .fillStyle(0x000000, 0.85)
+      .fillRoundedRect(-200, -50, 400, 100, 15)
+      .lineStyle(3, 0xffffff, 1)
+      .strokeRoundedRect(-200, -50, 400, 100, 15)
     const storyButtonText = this.add.text(0, 0, 'STORY MODE', {
       fontSize: '48px',
       color: '#ffffff',
@@ -146,7 +144,7 @@ export class TitleScene extends Phaser.Scene {
       [storyButtonBg, storyButtonText]
     )
       .setInteractive({
-        hitArea: new Phaser.Geom.Rectangle(-150, -50, 300, 100),
+        hitArea: new Phaser.Geom.Rectangle(-200, -50, 400, 100),
         hitAreaCallback: Phaser.Geom.Rectangle.Contains,
         useHandCursor: true,
       })
@@ -158,7 +156,8 @@ export class TitleScene extends Phaser.Scene {
     this.scene.stop('LevelScene')
 
     // Start a fresh LevelScene for actual gameplay
-    this.scene.start('LevelScene')
+    // Must pass empty object to override previous backgroundMode data
+    this.scene.start('LevelScene', {})
   }
 
   private startStoryMode(): void {
