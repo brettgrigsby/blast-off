@@ -41,6 +41,7 @@ export class MatchDetector {
       const rowBlocks = this.columnManager.getRow(row);
 
       let currentColor: BlockColor | null = null;
+      let currentGroup: BlockGroup | null | undefined = undefined;
       let consecutiveBlocks: Block[] = [];
 
       for (let col = 0; col < ColumnManager.COLUMNS; col++) {
@@ -54,20 +55,26 @@ export class MatchDetector {
           }
           // Reset
           currentColor = null;
+          currentGroup = undefined;
           consecutiveBlocks = [];
           continue;
         }
 
+        // Get the block's group (null if not in a group)
+        const blockGroup = this.columnManager.getBlockGroup(block);
+
         // Check if this block continues the sequence
-        if (block.color === currentColor) {
+        // Blocks must have same color AND same group membership
+        if (block.color === currentColor && blockGroup === currentGroup) {
           consecutiveBlocks.push(block);
         } else {
-          // New color - check if previous sequence was a match
+          // New color or different group - check if previous sequence was a match
           if (consecutiveBlocks.length >= 3) {
             consecutiveBlocks.forEach(b => matchedBlocks.add(b));
           }
           // Start new sequence
           currentColor = block.color;
+          currentGroup = blockGroup;
           consecutiveBlocks = [block];
         }
       }
@@ -94,6 +101,7 @@ export class MatchDetector {
       }
 
       let currentColor: BlockColor | null = null;
+      let currentGroup: BlockGroup | null | undefined = undefined;
       let consecutiveBlocks: Block[] = [];
 
       for (let i = 0; i < columnBlocks.length; i++) {
@@ -107,12 +115,17 @@ export class MatchDetector {
           }
           // Reset
           currentColor = null;
+          currentGroup = undefined;
           consecutiveBlocks = [];
           continue;
         }
 
+        // Get the block's group (null if not in a group)
+        const blockGroup = this.columnManager.getBlockGroup(block);
+
         // Check if this block continues the sequence
-        if (block.color === currentColor && consecutiveBlocks.length > 0) {
+        // Blocks must have same color AND same group membership
+        if (block.color === currentColor && blockGroup === currentGroup && consecutiveBlocks.length > 0) {
           // Verify blocks are physically adjacent (consecutive by position)
           const previousBlock = consecutiveBlocks[consecutiveBlocks.length - 1];
           const spacing = block.y - previousBlock.y;
@@ -130,15 +143,17 @@ export class MatchDetector {
             }
             // Start new sequence
             currentColor = block.color;
+            currentGroup = blockGroup;
             consecutiveBlocks = [block];
           }
         } else {
-          // New color - check if previous sequence was a match
+          // New color or different group - check if previous sequence was a match
           if (consecutiveBlocks.length >= 3) {
             consecutiveBlocks.forEach(b => matchedBlocks.add(b));
           }
           // Start new sequence
           currentColor = block.color;
+          currentGroup = blockGroup;
           consecutiveBlocks = [block];
         }
       }

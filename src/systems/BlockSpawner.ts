@@ -40,17 +40,18 @@ export class BlockSpawner {
     });
 
     // Start dump timer (generates random shapes every 10 seconds)
-    if (!this.dumpTimer) {
-      this.dumpTimer = this.scene.time.addEvent({
-        delay: BlockSpawner.DUMP_INTERVAL,
-        callback: () => {
-          const randomShape = DumpShapeGenerator.generateRandomShape();
-          this.scheduleDump(randomShape);
-        },
-        callbackScope: this,
-        loop: true,
-      });
-    }
+    // DISABLED FOR TESTING
+    // if (!this.dumpTimer) {
+    //   this.dumpTimer = this.scene.time.addEvent({
+    //     delay: BlockSpawner.DUMP_INTERVAL,
+    //     callback: () => {
+    //       const randomShape = DumpShapeGenerator.generateRandomShape();
+    //       this.scheduleDump(randomShape);
+    //     },
+    //     callbackScope: this,
+    //     loop: true,
+    //   });
+    // }
   }
 
   /**
