@@ -935,11 +935,45 @@ export class LevelScene extends Phaser.Scene {
   }
 
   /**
-   * Save score (placeholder for future implementation)
+   * Save score and report game over to SDK
    */
-  private saveScore(): void {
-    // TODO: Implement score saving logic
-    console.log('Save score clicked - not yet implemented')
+  private async saveScore(): Promise<void> {
+    if (!window.FarcadeSDK) {
+      console.error('FarcadeSDK not available')
+      return
+    }
+
+    try {
+      // Call SDK gameOver with the current score
+      await window.FarcadeSDK.singlePlayer.actions.gameOver({
+        score: this.blocksRemoved
+      })
+
+      console.log('Score saved successfully:', this.blocksRemoved)
+
+      // Visual feedback - update button to show success
+      const buttonText = this.saveScoreButton.getAt(1) as Phaser.GameObjects.Text
+      buttonText.setText('SCORE SAVED!')
+      buttonText.setColor('#00ff00')
+
+      // Return to title screen after a delay
+      this.time.delayedCall(1500, () => {
+        this.scene.start('TitleScene')
+      })
+    } catch (error) {
+      console.error('Failed to save score:', error)
+
+      // Show error feedback
+      const buttonText = this.saveScoreButton.getAt(1) as Phaser.GameObjects.Text
+      buttonText.setText('ERROR!')
+      buttonText.setColor('#ff0000')
+
+      // Reset button after 2 seconds
+      this.time.delayedCall(2000, () => {
+        buttonText.setText('Save Score')
+        buttonText.setColor('#ffffff')
+      })
+    }
   }
 
   /**
