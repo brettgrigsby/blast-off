@@ -309,7 +309,7 @@ export class BlockGroup {
    * During grace period, collision detection should be skipped to prevent premature disbanding
    */
   public isInGracePeriod(): boolean {
-    return this.wasMovingUpward && this.framesMovingDownward < 10;
+    return this.wasMovingUpward && this.framesMovingDownward < 5;
   }
 
   /**

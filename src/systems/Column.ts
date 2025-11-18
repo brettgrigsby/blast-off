@@ -107,6 +107,14 @@ export class Column {
       console.warn(`Block column ${block.column} doesn't match column index ${this.columnIndex}`);
     }
 
+    // Check for duplicate position (blocks overlapping)
+    const tolerance = this.blockHeight * 0.1; // 10% of block height
+    const existingBlock = this.getBlockAt(block.y, tolerance);
+    if (existingBlock && existingBlock !== block) {
+      // Adjust block position to be above the existing block
+      block.setPosition(block.x, existingBlock.y - this.blockHeight);
+    }
+
     this.blocks.push(block);
     this.sortBlocks();
   }

@@ -15,6 +15,7 @@ export class BlockSpawner {
   // Block dump configuration
   private static readonly DUMP_INTERVAL = 10000; // milliseconds (dump every 10 seconds)
   private static readonly WARNING_DURATION = 3000; // milliseconds (3 seconds warning)
+  private static readonly RESUME_DELAY = 3000; // milliseconds (3 seconds delay before resuming regular spawning after dump)
   private dumpTimer: Phaser.Time.TimerEvent | null = null;
   private warningTimer: Phaser.Time.TimerEvent | null = null;
   private pendingDumpShape: DumpShape | null = null;
@@ -86,8 +87,8 @@ export class BlockSpawner {
     // Random color
     const color = Block.getRandomColor();
 
-    // Calculate Y position above the grid (one block height above grid offset)
-    const spawnY = ColumnManager.GRID_OFFSET_Y - ColumnManager.ROW_HEIGHT;
+    // Spawn at the same height as dump blocks to ensure consistency
+    const spawnY = -600;
 
     // Create block above grid with initial downward velocity
     // addBlock handles everything - creation, velocity, and tracking
@@ -133,10 +134,12 @@ export class BlockSpawner {
         }
         this.warningTimer = null;
 
-        // Resume regular block spawning after dump completes
-        if (this.spawnTimer) {
-          this.spawnTimer.paused = false;
-        }
+        // Resume regular block spawning after a delay (give dump blocks time to fall)
+        this.scene.time.delayedCall(BlockSpawner.RESUME_DELAY, () => {
+          if (this.spawnTimer) {
+            this.spawnTimer.paused = false;
+          }
+        });
       },
       callbackScope: this,
       loop: false,

@@ -191,16 +191,6 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Safety net: Recover orphaned blocks (blocks stuck with velocity=0, not in grid, not in group)
-    for (const block of this.columnManager.getAllBlocks()) {
-      // Detect orphaned blocks
-      if (block.velocityY === 0 && !block.isInGrid && !this.columnManager.getBlockGroup(block)) {
-        console.warn(`[ORPHAN RECOVERY] Fixing stuck block at column ${block.column}, y ${block.y}`)
-        // Force block to start falling
-        block.setVelocity(100)
-      }
-    }
-
     // Update individual moving blocks (not in groups)
     const movingBlocks = this.columnManager.getMovingBlocks()
     for (const block of movingBlocks) {
@@ -326,6 +316,16 @@ export class GameScene extends Phaser.Scene {
       // If a match was made, cancel any current drag
       if (matchCount > 0 && this.inputManager) {
         this.inputManager.cancelDrag()
+      }
+    }
+
+    // Safety net: Recover orphaned blocks (blocks stuck with velocity=0, not in grid, not in group)
+    // Runs at END of update loop to catch blocks orphaned during this frame
+    for (const block of this.columnManager.getAllBlocks()) {
+      // Detect orphaned blocks
+      if (block.velocityY === 0 && !block.isInGrid && !this.columnManager.getBlockGroup(block)) {
+        // Force block to start falling with high velocity to avoid re-snapping to 0
+        block.setVelocity(300)
       }
     }
 
