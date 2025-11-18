@@ -15,17 +15,21 @@ export class BlockGroup {
 
   // Descent configuration
   private static readonly DESCENT_VELOCITY = 100; // pixels/second downward
-  private static readonly MAX_DESCENT_VELOCITY = 70; // Maximum downward velocity for groups (much slower than new blocks at 1000 px/s)
   private static readonly MAX_UPWARD_VELOCITY = -700; // Maximum upward movement velocity (px/s) - caps how fast groups move up, not how much velocity they can accumulate
-
-  // Gravity configuration - scales with group size
-  private static readonly BASE_GRAVITY = 150; // Base gravity affecting all groups (px/s²)
-  private static readonly MASS_GRAVITY_FACTOR = 75; // Additional gravity per block in group (px/s²)
 
   // Merge velocity bonus - applied when groups collide and merge
   private static readonly MERGE_VELOCITY_BONUS = -650; // Upward velocity bonus per block in merged group (px/s)
 
-  constructor(blocks: Block[] = []) {
+  // Level-specific configuration (instance properties)
+  private maxDescentVelocity: number;
+  private baseGravity: number;
+  private massGravityFactor: number;
+
+  constructor(blocks: Block[] = [], config?: { maxDescentVelocity?: number; baseGravity?: number; massGravityFactor?: number }) {
+    // Set configuration with defaults
+    this.maxDescentVelocity = config?.maxDescentVelocity ?? 70;
+    this.baseGravity = config?.baseGravity ?? 150;
+    this.massGravityFactor = config?.massGravityFactor ?? 75;
     this.blocks = new Set(blocks);
 
     // Set initial velocity based on first block (they should all have same velocity when formed)
@@ -253,7 +257,7 @@ export class BlockGroup {
     const deltaSeconds = delta / 1000;
 
     // Apply gravity to the group - scales with group size (mass)
-    const effectiveGravity = BlockGroup.BASE_GRAVITY + (this.blocks.size * BlockGroup.MASS_GRAVITY_FACTOR);
+    const effectiveGravity = this.baseGravity + (this.blocks.size * this.massGravityFactor);
     this.velocityY += effectiveGravity * deltaSeconds;
 
     // Track velocity state transitions for grace period
@@ -268,8 +272,8 @@ export class BlockGroup {
 
     // Cap downward velocity for descending groups (don't interfere with upward launches)
     // This prevents groups from falling as fast as new blocks
-    if (this.velocityY > BlockGroup.MAX_DESCENT_VELOCITY) {
-      this.velocityY = BlockGroup.MAX_DESCENT_VELOCITY;
+    if (this.velocityY > this.maxDescentVelocity) {
+      this.velocityY = this.maxDescentVelocity;
     }
 
     // Calculate the velocity to apply for movement

@@ -244,7 +244,11 @@ export class MatchDetector {
         });
 
         // Create and add the single unified group
-        const group = new BlockGroup(groupBlocks);
+        const group = new BlockGroup(groupBlocks, {
+          maxDescentVelocity: this.columnManager.maxDescentVelocity,
+          baseGravity: this.columnManager.baseGravity,
+          massGravityFactor: this.columnManager.massGravityFactor,
+        });
         this.columnManager.addGroup(group);
       }
 

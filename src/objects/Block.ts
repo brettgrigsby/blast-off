@@ -44,9 +44,6 @@ export class Block {
   // Physics constants
   public static readonly GRAVITY = 400; // pixels/second² - downward acceleration
 
-  // Grey block recovery constant
-  public static readonly GREY_RECOVERY_DELAY = 2000; // 2 seconds in milliseconds
-
   // Velocity threshold for snapping to zero
   private static readonly VELOCITY_THRESHOLD = 0.1; // pixels/second - velocities below this are treated as zero
 
@@ -56,14 +53,19 @@ export class Block {
   private static readonly BORDER_WIDTH = 3;
   private static readonly BORDER_COLOR = 0x000000;
 
+  // Level-specific configuration (instance property)
+  public greyRecoveryDelay: number;
+
   constructor(
     scene: Phaser.Scene,
     column: number,
     row: number,
     x: number,
     y: number,
-    color: BlockColor
+    color: BlockColor,
+    greyRecoveryDelay: number = 2000
   ) {
+    this.greyRecoveryDelay = greyRecoveryDelay;
     this.scene = scene;
     this.column = column;
     this.row = row;

@@ -25,10 +25,27 @@ export class ColumnManager {
   // Active block groups
   private groups: BlockGroup[];
 
-  constructor(scene: Phaser.Scene) {
+  // Level-specific configuration
+  public greyRecoveryDelay: number;
+  public maxDescentVelocity: number;
+  public baseGravity: number;
+  public massGravityFactor: number;
+
+  constructor(scene: Phaser.Scene, config?: {
+    greyRecoveryDelay?: number;
+    maxDescentVelocity?: number;
+    baseGravity?: number;
+    massGravityFactor?: number;
+  }) {
     this.scene = scene;
     this.blocks = [];
     this.groups = [];
+
+    // Set configuration with defaults
+    this.greyRecoveryDelay = config?.greyRecoveryDelay ?? 2000;
+    this.maxDescentVelocity = config?.maxDescentVelocity ?? 70;
+    this.baseGravity = config?.baseGravity ?? 150;
+    this.massGravityFactor = config?.massGravityFactor ?? 75;
 
     // Initialize columns
     this.columns = [];
@@ -190,7 +207,7 @@ export class ColumnManager {
     // Calculate row for legacy compatibility (will be removed later)
     const row = Math.floor((y - ColumnManager.GRID_OFFSET_Y) / ColumnManager.ROW_HEIGHT);
 
-    const block = new Block(this.scene, column, row, x, y, color);
+    const block = new Block(this.scene, column, row, x, y, color, this.greyRecoveryDelay);
 
     // Set initial velocity (e.g., for falling blocks)
     block.setVelocity(velocity);

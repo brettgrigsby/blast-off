@@ -1,5 +1,6 @@
 import type { FarcadeSDK, GameInfo } from '@farcade/game-sdk'
 import GameSettings from '../config/GameSettings'
+import { mergeLevelConfig, type LevelConfig } from '../config/LevelConfig'
 import { ColumnManager } from '../systems/ColumnManager'
 import { Block, BlockColor, PLAYABLE_COLORS } from '../objects/Block'
 import { BlockGroup } from '../objects/BlockGroup'
@@ -18,6 +19,7 @@ declare global {
 export class LevelScene extends Phaser.Scene {
   private isMultiplayer: boolean = false
   private isBackgroundMode: boolean = false
+  private levelConfig!: LevelConfig
   private columnManager!: ColumnManager
   private gridLinesGraphics!: Phaser.GameObjects.Graphics
   private blockSpawner!: BlockSpawner
@@ -58,9 +60,13 @@ export class LevelScene extends Phaser.Scene {
     super({ key: 'LevelScene' })
   }
 
-  create(data?: { backgroundMode?: boolean }): void {
+  create(data?: { backgroundMode?: boolean; levelConfig?: Partial<LevelConfig> }): void {
     // Reset background mode (scene instance may be reused by Phaser)
     this.isBackgroundMode = data?.backgroundMode === true
+
+    // Merge provided config with defaults
+    this.levelConfig = mergeLevelConfig(data?.levelConfig)
+
     this.initializeSDK()
   }
 
@@ -312,7 +318,7 @@ export class LevelScene extends Phaser.Scene {
           // Block just came to rest - start recovery timer
           if (!block.greyRecoveryTimer) {
             block.greyRecoveryTimer = this.time.addEvent({
-              delay: Block.GREY_RECOVERY_DELAY,
+              delay: block.greyRecoveryDelay,
               callback: () => {
                 // Mark block as ready for recovery (actual color assigned in batch below)
                 this.blocksReadyToRecover.push(block)
@@ -411,7 +417,12 @@ export class LevelScene extends Phaser.Scene {
     }
 
     // Initialize column system
-    this.columnManager = new ColumnManager(this)
+    this.columnManager = new ColumnManager(this, {
+      greyRecoveryDelay: this.levelConfig.greyRecoveryDelay,
+      maxDescentVelocity: this.levelConfig.maxDescentVelocity,
+      baseGravity: this.levelConfig.baseGravity,
+      massGravityFactor: this.levelConfig.massGravityFactor,
+    })
 
     // Create graphics for grid lines (debug visualization)
     this.gridLinesGraphics = this.add.graphics()
@@ -432,7 +443,10 @@ export class LevelScene extends Phaser.Scene {
     // ===== END TEMPORARY =====
 
     // Initialize and start block spawner (Iteration 2)
-    this.blockSpawner = new BlockSpawner(this, this.columnManager)
+    this.blockSpawner = new BlockSpawner(this, this.columnManager, {
+      spawnRate: this.levelConfig.spawnRate,
+      dumpInterval: this.levelConfig.dumpInterval,
+    })
     this.blockSpawner.start()
 
     // Initialize input manager (Iteration 3)
@@ -722,7 +736,7 @@ export class LevelScene extends Phaser.Scene {
       if (block.isGrey() && block.isAtRest() && !block.greyRecoveryTimer) {
         // Start recovery timer
         block.greyRecoveryTimer = this.time.addEvent({
-          delay: Block.GREY_RECOVERY_DELAY,
+          delay: block.greyRecoveryDelay,
           callback: () => {
             this.blocksReadyToRecover.push(block)
             block.greyRecoveryTimer = null
@@ -1085,7 +1099,7 @@ export class LevelScene extends Phaser.Scene {
         // Grey block at rest with no timer - start recovery timer immediately
         // This handles dump blocks and other grey blocks that were saved before their timer started
         block.greyRecoveryTimer = this.time.addEvent({
-          delay: Block.GREY_RECOVERY_DELAY,
+          delay: block.greyRecoveryDelay,
           callback: () => {
             this.blocksReadyToRecover.push(block)
             block.greyRecoveryTimer = null
@@ -1118,7 +1132,11 @@ export class LevelScene extends Phaser.Scene {
         }
 
         if (groupBlocks.length > 0) {
-          const group = new BlockGroup(groupBlocks)
+          const group = new BlockGroup(groupBlocks, {
+            maxDescentVelocity: this.columnManager.maxDescentVelocity,
+            baseGravity: this.columnManager.baseGravity,
+            massGravityFactor: this.columnManager.massGravityFactor,
+          })
           // Set the group's velocity (BlockGroup constructor sets it from first block,
           // but we need to override it with the saved velocity)
           group.setVelocity(savedGroup.v)

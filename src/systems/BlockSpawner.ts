@@ -9,20 +9,24 @@ export class BlockSpawner {
   private columnManager: ColumnManager;
   private spawnTimer: Phaser.Time.TimerEvent | null = null;
 
-  // Spawn configuration
-  private static readonly SPAWN_RATE = 1000; // milliseconds (1 block per second)
-
-  // Block dump configuration
-  private static readonly DUMP_INTERVAL = 20000; // milliseconds (dump every 10 seconds)
+  // Block dump configuration (static - not level-configurable)
   private static readonly WARNING_DURATION = 3000; // milliseconds (3 seconds warning)
   private static readonly RESUME_DELAY = 3000; // milliseconds (3 seconds delay before resuming regular spawning after dump)
   private dumpTimer: Phaser.Time.TimerEvent | null = null;
   private warningTimer: Phaser.Time.TimerEvent | null = null;
   private pendingDumpShape: DumpShape | null = null;
 
-  constructor(scene: LevelScene, columnManager: ColumnManager) {
+  // Level-specific configuration (instance properties)
+  private spawnRate: number;
+  private dumpInterval: number;
+
+  constructor(scene: LevelScene, columnManager: ColumnManager, config?: { spawnRate?: number; dumpInterval?: number }) {
     this.scene = scene;
     this.columnManager = columnManager;
+
+    // Set configuration with defaults
+    this.spawnRate = config?.spawnRate ?? 1000;
+    this.dumpInterval = config?.dumpInterval ?? 20000;
   }
 
   /**
@@ -34,7 +38,7 @@ export class BlockSpawner {
     }
 
     this.spawnTimer = this.scene.time.addEvent({
-      delay: BlockSpawner.SPAWN_RATE,
+      delay: this.spawnRate,
       callback: this.spawnBlock,
       callbackScope: this,
       loop: true,
@@ -43,7 +47,7 @@ export class BlockSpawner {
     // Start dump timer (generates random shapes every 10 seconds)
     if (!this.dumpTimer) {
       this.dumpTimer = this.scene.time.addEvent({
-        delay: BlockSpawner.DUMP_INTERVAL,
+        delay: this.dumpInterval,
         callback: () => {
           const randomShape = DumpShapeGenerator.generateRandomShape();
           this.scheduleDump(randomShape);
