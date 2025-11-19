@@ -20,13 +20,22 @@ export class BlockSpawner {
   private spawnRate: number;
   private dumpInterval: number;
 
+  // LFG mode configuration
+  private isLFGMode: boolean = false;
+  private baseSpawnRate: number;
+  private currentSpawnRate: number;
+  private hapticCallback: (() => void) | null = null;
+  private lastLFGSpawnTime: number = 0;
+
   constructor(scene: LevelScene, columnManager: ColumnManager, config?: { spawnRate?: number; dumpInterval?: number }) {
     this.scene = scene;
     this.columnManager = columnManager;
 
     // Set configuration with defaults
     this.spawnRate = config?.spawnRate ?? 1000;
-    this.dumpInterval = config?.dumpInterval ?? 20000;
+    this.dumpInterval = config?.dumpInterval ?? 30000;
+    this.baseSpawnRate = this.spawnRate;
+    this.currentSpawnRate = this.spawnRate;
   }
 
   /**
@@ -97,6 +106,11 @@ export class BlockSpawner {
     // Create block above grid with initial downward velocity
     // addBlock handles everything - creation, velocity, and tracking
     this.columnManager.addBlock(column, spawnY, color, 1000);
+
+    // Call haptic feedback if in LFG mode
+    if (this.isLFGMode && this.hapticCallback) {
+      this.hapticCallback();
+    }
   }
 
   /**
@@ -183,5 +197,84 @@ export class BlockSpawner {
    */
   public destroy(): void {
     this.stop();
+  }
+
+  /**
+   * Set the haptic feedback callback for LFG mode
+   */
+  public setHapticCallback(callback: () => void): void {
+    this.hapticCallback = callback;
+  }
+
+  /**
+   * Enable LFG mode
+   */
+  public enableLFGMode(): void {
+    this.isLFGMode = true;
+    this.lastLFGSpawnTime = this.scene.time.now;
+
+    // Pause regular spawning during LFG mode
+    if (this.spawnTimer) {
+      this.spawnTimer.paused = true;
+    }
+  }
+
+  /**
+   * Disable LFG mode and reset to base spawn rate
+   */
+  public disableLFGMode(): void {
+    this.isLFGMode = false;
+    this.currentSpawnRate = this.baseSpawnRate;
+
+    // Resume regular spawning
+    if (this.spawnTimer) {
+      this.spawnTimer.paused = false;
+    }
+  }
+
+  /**
+   * Update LFG spawning - call this from scene update loop
+   * @param spawnRate Current spawn rate in milliseconds
+   */
+  public updateLFGSpawning(spawnRate: number): void {
+    if (!this.isLFGMode) return;
+
+    this.currentSpawnRate = spawnRate;
+    const currentTime = this.scene.time.now;
+    const timeSinceLastSpawn = currentTime - this.lastLFGSpawnTime;
+
+    // Check if enough time has passed to spawn another block
+    if (timeSinceLastSpawn >= this.currentSpawnRate) {
+      this.spawnBlock();
+      this.lastLFGSpawnTime = currentTime;
+    }
+  }
+
+  /**
+   * Get the current spawn rate
+   */
+  public getCurrentSpawnRate(): number {
+    return this.currentSpawnRate;
+  }
+
+  /**
+   * Get the base spawn rate
+   */
+  public getBaseSpawnRate(): number {
+    return this.baseSpawnRate;
+  }
+
+  /**
+   * Check if spawn timer is paused (e.g., during dump)
+   */
+  public isSpawnPaused(): boolean {
+    return this.spawnTimer?.paused ?? false;
+  }
+
+  /**
+   * Check if a dump is currently active (warning or executing)
+   */
+  public isDumpActive(): boolean {
+    return this.warningTimer !== null || this.pendingDumpShape !== null;
   }
 }

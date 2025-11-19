@@ -42,8 +42,20 @@ export class LevelScene extends Phaser.Scene {
   private saveButton!: Phaser.GameObjects.Container
   private resumeButton!: Phaser.GameObjects.Container
 
+  // LFG button state
+  private lfgButton!: Phaser.GameObjects.Container
+  private lfgButtonBg!: Phaser.GameObjects.Graphics
+  private isLFGActive: boolean = false
+  private lfgStartTime: number = 0
+  private lfgOverlayTween: Phaser.Tweens.Tween | null = null
+  private lfgButtonColorTween: Phaser.Tweens.Tween | null = null
+  private lfgButtonColorValue: number = 0
+
   // Block dump warning overlay
   private warningOverlay!: Phaser.GameObjects.Rectangle
+
+  // LFG mode blue overlay
+  private blueOverlay!: Phaser.GameObjects.Rectangle
 
   // Lose condition tracking
   private loseConditionTimers: Map<number, Phaser.Time.TimerEvent> = new Map()
@@ -346,6 +358,31 @@ export class LevelScene extends Phaser.Scene {
       this.colorAssigner.assignColorsToBlocks(this.blocksReadyToRecover)
       this.blocksReadyToRecover = [] // Clear for next frame
     }
+
+    // LFG mode spawn rate ramping
+    if (this.isLFGActive && this.blockSpawner) {
+      // If a dump is active, stop LFG mode
+      if (this.blockSpawner.isDumpActive()) {
+        this.handleLFGUp()
+      } else {
+        // Calculate elapsed time since LFG started
+        const elapsedTime = this.time.now - this.lfgStartTime
+        const rampDuration = 1500 // milliseconds
+
+        // Get base and target spawn rates
+        const baseRate = this.blockSpawner.getBaseSpawnRate()
+        const targetRate = 200 // 200ms = max speed (5 blocks per second)
+
+        // Calculate interpolation factor (clamped to 0-1)
+        const t = Math.min(elapsedTime / rampDuration, 1)
+
+        // Linear interpolation from base rate to target rate
+        const newRate = baseRate + (targetRate - baseRate) * t
+
+        // Update LFG spawning with the new rate
+        this.blockSpawner.updateLFGSpawning(newRate)
+      }
+    }
   }
 
   private async initializeSDK(): Promise<void> {
@@ -495,6 +532,33 @@ export class LevelScene extends Phaser.Scene {
       })
       .on('pointerdown', () => this.pauseGame())
 
+    // Add LFG button at bottom middle
+    this.lfgButtonBg = this.add.graphics()
+      .fillStyle(0x4444ff, 0.8)
+      .fillRoundedRect(-100, -40, 200, 80, 10)
+      .lineStyle(2, 0xffffff, 1)
+      .strokeRoundedRect(-100, -40, 200, 80, 10)
+    const lfgButtonText = this.add.text(0, 0, 'LFG', {
+      fontSize: '48px',
+      color: '#ffffff',
+      fontFamily: 'Arial',
+      fontStyle: 'bold',
+    }).setOrigin(0.5)
+    this.lfgButton = this.add.container(
+      GameSettings.canvas.width / 2,
+      GameSettings.canvas.height - 30,
+      [this.lfgButtonBg, lfgButtonText]
+    )
+      .setDepth(1000)
+      .setInteractive({
+        hitArea: new Phaser.Geom.Rectangle(-100, -40, 200, 80),
+        hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+        useHandCursor: true
+      })
+      .on('pointerdown', () => this.handleLFGDown())
+      .on('pointerup', () => this.handleLFGUp())
+      .on('pointerout', () => this.handleLFGUp()) // Also release if pointer leaves button
+
     // Create block dump warning indicators (hidden initially)
     this.createWarningIndicators()
 
@@ -565,6 +629,7 @@ export class LevelScene extends Phaser.Scene {
       // Hide UI elements
       this.scoreText.setVisible(false)
       this.pauseButton.setVisible(false)
+      this.lfgButton.setVisible(false)
 
       // Disable input
       this.inputManager.setEnabled(false)
@@ -675,6 +740,13 @@ export class LevelScene extends Phaser.Scene {
       .rectangle(0, 0, GameSettings.canvas.width, ColumnManager.GRID_OFFSET_Y, 0xff0000, 0.5)
       .setOrigin(0, 0)
       .setDepth(1000)
+      .setVisible(false)
+
+    // Create blue glow overlay for LFG mode
+    this.blueOverlay = this.add
+      .rectangle(0, 0, GameSettings.canvas.width, ColumnManager.GRID_OFFSET_Y, 0x0000ff, 0)
+      .setOrigin(0, 0)
+      .setDepth(1001)
       .setVisible(false)
   }
 
@@ -859,6 +931,11 @@ export class LevelScene extends Phaser.Scene {
     // Pause the game
     this.isPaused = true
 
+    // Stop LFG mode if active
+    if (this.isLFGActive) {
+      this.handleLFGUp()
+    }
+
     // Stop game systems
     this.blockSpawner.stop()
     this.inputManager.setEnabled(false)
@@ -885,8 +962,9 @@ export class LevelScene extends Phaser.Scene {
       this.loadFromSaveButton.setVisible(true)
     }
 
-    // Hide pause button
+    // Hide pause button and LFG button
     this.pauseButton.setVisible(false)
+    this.lfgButton.setVisible(false)
   }
 
   /**
@@ -930,8 +1008,9 @@ export class LevelScene extends Phaser.Scene {
       this.greyBlockSafetyTimer.paused = false
     }
 
-    // Show pause button
+    // Show pause button and LFG button
     this.pauseButton.setVisible(true)
+    this.lfgButton.setVisible(true)
   }
 
   /**
@@ -962,6 +1041,11 @@ export class LevelScene extends Phaser.Scene {
   private pauseGame(): void {
     this.isPaused = true
 
+    // Stop LFG mode if active
+    if (this.isLFGActive) {
+      this.handleLFGUp()
+    }
+
     // Stop game systems
     this.blockSpawner.stop()
     this.inputManager.setEnabled(false)
@@ -982,6 +1066,7 @@ export class LevelScene extends Phaser.Scene {
     this.saveButton.setVisible(true)
     this.resumeButton.setVisible(true)
     this.pauseButton.setVisible(false)
+    this.lfgButton.setVisible(false)
   }
 
   /**
@@ -1011,6 +1096,116 @@ export class LevelScene extends Phaser.Scene {
     this.saveButton.setVisible(false)
     this.resumeButton.setVisible(false)
     this.pauseButton.setVisible(true)
+    this.lfgButton.setVisible(true)
+  }
+
+  /**
+   * Handle LFG button press - start accelerated spawning
+   */
+  private handleLFGDown(): void {
+    // Don't activate if game is paused or already active
+    if (this.isPaused || this.isLFGActive) return
+
+    // Don't activate if a dump is active
+    if (this.blockSpawner.isDumpActive()) return
+
+    console.log('LFG mode activated')
+    this.isLFGActive = true
+    this.lfgStartTime = this.time.now
+
+    // Show blue overlay and ramp opacity from 0 to 0.6 over 3000ms (lags behind spawn rate)
+    this.blueOverlay.setVisible(true).setAlpha(0)
+    this.blueOverlay.setSize(GameSettings.canvas.width, ColumnManager.GRID_OFFSET_Y)
+    this.blueOverlay.setFillStyle(0x6699ff, 1) // Medium-light blue
+    this.lfgOverlayTween = this.tweens.add({
+      targets: this.blueOverlay,
+      alpha: 0.6,
+      duration: 3000,
+      ease: 'Quad.easeIn'
+    })
+
+    // Tween button color from dark blue to light blue over 3000ms
+    this.lfgButtonColorValue = 0
+    this.lfgButtonColorTween = this.tweens.add({
+      targets: this,
+      lfgButtonColorValue: 1,
+      duration: 3000,
+      ease: 'Quad.easeIn',
+      onUpdate: () => {
+        // Interpolate color from 0x4444ff (dark blue) to 0x88aaff (medium-light blue)
+        const t = this.lfgButtonColorValue
+        const r1 = 0x44, g1 = 0x44, b1 = 0xff
+        const r2 = 0x88, g2 = 0xaa, b2 = 0xff
+        const r = Math.round(r1 + (r2 - r1) * t)
+        const g = Math.round(g1 + (g2 - g1) * t)
+        const b = Math.round(b1 + (b2 - b1) * t)
+        const color = (r << 16) | (g << 8) | b
+
+        // Redraw button with new color
+        this.lfgButtonBg.clear()
+        this.lfgButtonBg.fillStyle(color, 0.8)
+        this.lfgButtonBg.fillRoundedRect(-100, -40, 200, 80, 10)
+        this.lfgButtonBg.lineStyle(2, 0xffffff, 1)
+        this.lfgButtonBg.strokeRoundedRect(-100, -40, 200, 80, 10)
+      }
+    })
+
+    // Enable LFG mode in BlockSpawner
+    this.blockSpawner.enableLFGMode()
+
+    // Set haptic feedback callback
+    this.blockSpawner.setHapticCallback(() => {
+      if (window.FarcadeSDK) {
+        if (this.isMultiplayer) {
+          window.FarcadeSDK.multiplayer.actions.hapticFeedback()
+        } else {
+          window.FarcadeSDK.singlePlayer.actions.hapticFeedback()
+        }
+      }
+    })
+  }
+
+  /**
+   * Handle LFG button release - stop accelerated spawning
+   */
+  private handleLFGUp(): void {
+    if (!this.isLFGActive) return
+
+    console.log('LFG mode deactivated')
+    this.isLFGActive = false
+
+    // Stop overlay tween if active
+    if (this.lfgOverlayTween) {
+      this.lfgOverlayTween.stop()
+      this.lfgOverlayTween = null
+    }
+
+    // Stop button color tween if active
+    if (this.lfgButtonColorTween) {
+      this.lfgButtonColorTween.stop()
+      this.lfgButtonColorTween = null
+    }
+
+    // Fade out blue overlay quickly
+    this.tweens.add({
+      targets: this.blueOverlay,
+      alpha: 0,
+      duration: 200,
+      ease: 'Linear',
+      onComplete: () => {
+        this.blueOverlay.setVisible(false)
+      }
+    })
+
+    // Reset button to original color
+    this.lfgButtonBg.clear()
+    this.lfgButtonBg.fillStyle(0x4444ff, 0.8)
+    this.lfgButtonBg.fillRoundedRect(-100, -40, 200, 80, 10)
+    this.lfgButtonBg.lineStyle(2, 0xffffff, 1)
+    this.lfgButtonBg.strokeRoundedRect(-100, -40, 200, 80, 10)
+
+    // Disable LFG mode in BlockSpawner (also resets spawn rate)
+    this.blockSpawner.disableLFGMode()
   }
 
   /**

@@ -30,7 +30,7 @@ export const DEFAULT_LEVEL_CONFIG: LevelConfig = {
   massGravityFactor: 75,
   greyRecoveryDelay: 2000,
   spawnRate: 1000,
-  dumpInterval: 20000,
+  dumpInterval: 30000,
 }
 
 /**
