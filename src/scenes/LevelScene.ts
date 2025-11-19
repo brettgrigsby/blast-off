@@ -91,6 +91,16 @@ export class LevelScene extends Phaser.Scene {
     let blocksPlaced = false
     let blocksRemovedThisFrame = false
 
+    // Continuous match checking - check grid for matches every frame
+    if (this.matchDetector) {
+      const matchCount = this.matchDetector.checkAndProcessMatches()
+
+      // If a match was made, cancel any current drag
+      if (matchCount > 0 && this.inputManager) {
+        this.inputManager.cancelDrag()
+      }
+    }
+
     // Update groups (Iteration 6)
     const groups = this.columnManager.getGroups()
     for (const group of groups) {
@@ -298,16 +308,6 @@ export class LevelScene extends Phaser.Scene {
       }
     }
 
-    // Check for matches after blocks are placed
-    if (blocksPlaced && this.matchDetector) {
-      const matchCount = this.matchDetector.checkAndProcessMatches()
-
-      // If a match was made, cancel any current drag
-      if (matchCount > 0 && this.inputManager) {
-        this.inputManager.cancelDrag()
-      }
-    }
-
     // Safety net: Recover orphaned blocks (blocks stuck with velocity=0, not in grid, not in group)
     // Runs at END of update loop to catch blocks orphaned during this frame
     for (const block of this.columnManager.getAllBlocks()) {
@@ -487,16 +487,9 @@ export class LevelScene extends Phaser.Scene {
     this.blockSpawner.start()
 
     // Initialize input manager (Iteration 3)
-    // Pass callback to check for matches after swaps (Iteration 4)
+    // Note: Match checking is now handled continuously in the update loop
     this.inputManager = new InputManager(this, this.columnManager, () => {
-      this.matchDetector.checkAndProcessMatches()
-
-      // Also check matches in moving groups immediately after swap
-      // This prevents delay when creating matches within existing groups
-      const groups = this.columnManager.getGroups()
-      for (const group of groups) {
-        this.matchDetector.checkMatchesInGroup(group)
-      }
+      // Empty callback - continuous match checking handles this now
     })
 
     // Add score counter at bottom left (Iteration 5)
