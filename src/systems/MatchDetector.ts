@@ -131,8 +131,8 @@ export class MatchDetector {
           const spacing = block.y - previousBlock.y;
           const expectedSpacing = ColumnManager.ROW_HEIGHT;
 
-          // Blocks should be exactly ROW_HEIGHT apart (within 1px for floating point precision)
-          const isConsecutive = Math.abs(spacing - expectedSpacing) <= 1;
+          // Blocks should be approximately ROW_HEIGHT apart
+          const isConsecutive = Math.abs(spacing - expectedSpacing) <= expectedSpacing * 0.25; // 25% tolerance
 
           if (isConsecutive) {
             consecutiveBlocks.push(block);
