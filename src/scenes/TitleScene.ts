@@ -50,7 +50,7 @@ export class TitleScene extends Phaser.Scene {
     // Load title image
     this.load.image(
       'titleText',
-      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/title-text-00WTyXV27hfvPVNtYGTfPhPXuqH2qh.webp?00Bt'
+      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/blockboostertitletext-pirM0pmhyj9JEPH99vKYw2AVv5hHxZ.webp?mhq6'
     )
   }
 
@@ -96,7 +96,7 @@ export class TitleScene extends Phaser.Scene {
     const titleImage = this.add
       .image(
         GameSettings.canvas.width / 2,
-        200,
+        250,
         'titleText'
       )
       .setOrigin(0.5)
