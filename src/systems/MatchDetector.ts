@@ -225,8 +225,9 @@ export class MatchDetector {
 
       if (existingGroup) {
         // Add force to existing group (force stacking)
-        const launchVelocity = this.getLaunchVelocity(matchResult.size);
+        const launchVelocity = this.getLaunchVelocity(matchResult.size, true, existingGroup.getBoostCount());
         existingGroup.addVelocity(launchVelocity);
+        existingGroup.incrementBoostCount();
       } else {
         // Create ONE group for ALL blocks (across all columns)
         const groupBlocks: Block[] = [];
