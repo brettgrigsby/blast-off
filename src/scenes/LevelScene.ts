@@ -9,6 +9,7 @@ import { InputManager } from '../systems/InputManager'
 import { MatchDetector } from '../systems/MatchDetector'
 import { ColorAssigner } from '../systems/ColorAssigner'
 import { GameStateManager, type GameState } from '../systems/GameStateManager'
+import { GlobalGameState } from '../systems/GlobalGameState'
 
 declare global {
   interface Window {
@@ -40,6 +41,7 @@ export class LevelScene extends Phaser.Scene {
   private pauseButton!: Phaser.GameObjects.Container
   private pauseOverlay!: Phaser.GameObjects.Rectangle
   private saveButton!: Phaser.GameObjects.Container
+  private abandonButton!: Phaser.GameObjects.Container
   private resumeButton!: Phaser.GameObjects.Container
 
   // LFG button state
@@ -73,8 +75,17 @@ export class LevelScene extends Phaser.Scene {
   }
 
   create(data?: { backgroundMode?: boolean; levelConfig?: Partial<LevelConfig> }): void {
-    // Reset background mode (scene instance may be reused by Phaser)
+    // Reset state variables (scene instance may be reused by Phaser)
     this.isBackgroundMode = data?.backgroundMode === true
+    this.isPaused = false
+    this.isLFGActive = false
+    this.blocksRemoved = 0
+    this.blocksReadyToRecover = []
+    this.columnsAtRisk = new Set()
+    this.loseConditionTimers = new Map()
+    this.columnWarnings = new Map()
+    this.hasSavedGame = false
+    this.savedGameState = null
 
     // Merge provided config with defaults
     this.levelConfig = mergeLevelConfig(data?.levelConfig)
@@ -419,17 +430,19 @@ export class LevelScene extends Phaser.Scene {
       }
     } else {
       try {
-        const gameInfo = await window.FarcadeSDK.singlePlayer.actions.ready()
+        await window.FarcadeSDK.singlePlayer.actions.ready()
         this.createGameElements()
 
-        // Load saved game state if available
-        if (gameInfo?.initialGameState?.gameState) {
-          const rawGameState = gameInfo.initialGameState.gameState
-          // Store the raw state (could be old or new format)
-          this.savedGameState = rawGameState as GameState
+        // Load saved game state from GlobalGameState
+        const globalGameState = GlobalGameState.getInstance()
+        const gameState = globalGameState.getGameState()
+
+        if (gameState?.currentLevel) {
+          // Store the raw state for game over "Load from Save" feature
+          this.savedGameState = gameState
           this.hasSavedGame = true
           // Load it (deserialize handles both formats)
-          this.loadGameState(rawGameState)
+          this.loadGameState(gameState)
         }
       } catch (error) {
         console.error('Failed to initialize single player SDK:', error)
@@ -568,7 +581,7 @@ export class LevelScene extends Phaser.Scene {
     // Save Game button with border
     const saveButtonBg = this.add.graphics()
       .lineStyle(1, 0xffffff, 1)
-      .strokeRoundedRect(-150, -40, 300, 80, 10)
+      .strokeRoundedRect(-160, -40, 320, 80, 10)
     const saveButtonText = this.add.text(0, 0, 'Save Game', {
       fontSize: '40px',
       color: '#ffffff',
@@ -577,22 +590,46 @@ export class LevelScene extends Phaser.Scene {
     }).setOrigin(0.5)
     this.saveButton = this.add.container(
       GameSettings.canvas.width / 2,
-      GameSettings.canvas.height / 2 - 50,
+      GameSettings.canvas.height / 2 - 100,
       [saveButtonBg, saveButtonText]
     )
       .setDepth(2001)
       .setVisible(false)
       .setInteractive({
-        hitArea: new Phaser.Geom.Rectangle(-150, -40, 300, 80),
+        hitArea: new Phaser.Geom.Rectangle(-160, -40, 320, 80),
         hitAreaCallback: Phaser.Geom.Rectangle.Contains,
         useHandCursor: true
       })
       .on('pointerdown', () => this.saveGame())
 
+    // Abandon Game button with border
+    const abandonButtonBg = this.add.graphics()
+      .lineStyle(1, 0xffffff, 1)
+      .strokeRoundedRect(-160, -40, 320, 80, 10)
+    const abandonButtonText = this.add.text(0, 0, 'Abandon Game', {
+      fontSize: '40px',
+      color: '#ffffff',
+      fontFamily: 'Arial',
+      fontStyle: 'bold',
+    }).setOrigin(0.5)
+    this.abandonButton = this.add.container(
+      GameSettings.canvas.width / 2,
+      GameSettings.canvas.height / 2,
+      [abandonButtonBg, abandonButtonText]
+    )
+      .setDepth(2001)
+      .setVisible(false)
+      .setInteractive({
+        hitArea: new Phaser.Geom.Rectangle(-160, -40, 320, 80),
+        hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+        useHandCursor: true
+      })
+      .on('pointerdown', () => this.abandonGame())
+
     // Resume button with border
     const resumeButtonBg = this.add.graphics()
       .lineStyle(1, 0xffffff, 1)
-      .strokeRoundedRect(-150, -40, 300, 80, 10)
+      .strokeRoundedRect(-160, -40, 320, 80, 10)
     const resumeButtonText = this.add.text(0, 0, 'Resume', {
       fontSize: '40px',
       color: '#ffffff',
@@ -601,13 +638,13 @@ export class LevelScene extends Phaser.Scene {
     }).setOrigin(0.5)
     this.resumeButton = this.add.container(
       GameSettings.canvas.width / 2,
-      GameSettings.canvas.height / 2 + 50,
+      GameSettings.canvas.height / 2 + 100,
       [resumeButtonBg, resumeButtonText]
     )
       .setDepth(2001)
       .setVisible(false)
       .setInteractive({
-        hitArea: new Phaser.Geom.Rectangle(-150, -40, 300, 80),
+        hitArea: new Phaser.Geom.Rectangle(-160, -40, 320, 80),
         hitAreaCallback: Phaser.Geom.Rectangle.Contains,
         useHandCursor: true
       })
@@ -1056,6 +1093,7 @@ export class LevelScene extends Phaser.Scene {
     // Show pause menu
     this.pauseOverlay.setVisible(true)
     this.saveButton.setVisible(true)
+    this.abandonButton.setVisible(true)
     this.resumeButton.setVisible(true)
     this.pauseButton.setVisible(false)
     this.lfgButton.setVisible(false)
@@ -1086,9 +1124,25 @@ export class LevelScene extends Phaser.Scene {
     // Hide pause menu
     this.pauseOverlay.setVisible(false)
     this.saveButton.setVisible(false)
+    this.abandonButton.setVisible(false)
     this.resumeButton.setVisible(false)
     this.pauseButton.setVisible(true)
     this.lfgButton.setVisible(true)
+  }
+
+  /**
+   * Abandon the current game and return to title screen
+   */
+  private abandonGame(): void {
+    // Clear the global game state (this will save to SDK as a side effect)
+    const globalGameState = GlobalGameState.getInstance()
+    globalGameState.clearGameState()
+
+    console.log('Game abandoned')
+
+    // Transition to title screen
+    this.scene.stop('LevelScene')
+    this.scene.start('TitleScene')
   }
 
   /**
@@ -1207,26 +1261,25 @@ export class LevelScene extends Phaser.Scene {
   }
 
   /**
-   * Save game using Farcade SDK
+   * Save game using GlobalGameState
    */
   private async saveGame(): Promise<void> {
-    if (!window.FarcadeSDK) {
-      console.error('FarcadeSDK not available')
-      return
-    }
-
     try {
       const gameState = GameStateManager.serialize(
         this.columnManager,
         this.blocksRemoved,
         this.loseConditionTimers
       )
-      await window.FarcadeSDK.singlePlayer.actions.saveGameState({ gameState })
-      console.log('Game saved successfully', gameState)
 
-      // Track that we have a saved game
+      // Update global state (this will save to SDK as a side effect)
+      const globalGameState = GlobalGameState.getInstance()
+      globalGameState.updateGameState(gameState)
+
+      // Track that we have a saved game locally for game over screen
       this.hasSavedGame = true
       this.savedGameState = gameState
+
+      console.log('Game saved successfully', gameState)
 
       // Update button to show success feedback
       const buttonText = this.saveButton.getAt(1) as Phaser.GameObjects.Text

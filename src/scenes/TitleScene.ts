@@ -1,5 +1,6 @@
 import type { FarcadeSDK } from '@farcade/game-sdk'
 import GameSettings from '../config/GameSettings'
+import { GlobalGameState } from '../systems/GlobalGameState'
 
 declare global {
   interface Window {
@@ -61,14 +62,15 @@ export class TitleScene extends Phaser.Scene {
   }
 
   async create(): Promise<void> {
-    // Check for saved game state
-    const hasSavedGame = await this.checkForSavedGame()
+    // Initialize GlobalGameState from SDK
+    await this.initializeGlobalGameState()
 
     // Remove loading text
     this.loadingText.destroy()
 
-    // If there's a saved game, automatically start the level
-    if (hasSavedGame) {
+    // Check if there's a saved game
+    const globalGameState = GlobalGameState.getInstance()
+    if (globalGameState.hasSavedGame()) {
       this.scene.start('LevelScene')
       return
     }
@@ -77,17 +79,25 @@ export class TitleScene extends Phaser.Scene {
     this.showTitleScreen()
   }
 
-  private async checkForSavedGame(): Promise<boolean> {
+  /**
+   * Initialize the GlobalGameState singleton from SDK's initialGameState
+   * This should only be called once when the app starts
+   */
+  private async initializeGlobalGameState(): Promise<void> {
+    const globalGameState = GlobalGameState.getInstance()
+
     if (!window.FarcadeSDK) {
-      return false
+      globalGameState.initialize(null)
+      return
     }
 
     try {
       const gameInfo = await window.FarcadeSDK.singlePlayer.actions.ready()
-      return !!(gameInfo?.initialGameState?.gameState)
+      const gameState = gameInfo?.initialGameState?.gameState || null
+      globalGameState.initialize(gameState)
     } catch (error) {
-      console.error('Failed to check for saved game:', error)
-      return false
+      console.error('Failed to initialize game state from SDK:', error)
+      globalGameState.initialize(null)
     }
   }
 
