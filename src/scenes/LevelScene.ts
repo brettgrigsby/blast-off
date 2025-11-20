@@ -525,26 +525,25 @@ export class LevelScene extends Phaser.Scene {
       })
       .on('pointerdown', () => this.pauseGame())
 
-    // Add LFG button at bottom middle
+    // Add LFG button at bottom middle (full height of bottom section: 90px)
+    const gridBottom = ColumnManager.GRID_OFFSET_Y + (ColumnManager.ROWS * ColumnManager.ROW_HEIGHT)
+    const bottomSectionHeight = GameSettings.canvas.height - gridBottom
+    const buttonCenterY = gridBottom + (bottomSectionHeight / 2)
+    const buttonHalfHeight = bottomSectionHeight / 2
+
     this.lfgButtonBg = this.add.graphics()
-      .fillStyle(0x4444ff, 0.8)
-      .fillRoundedRect(-100, -40, 200, 80, 10)
-      .lineStyle(2, 0xffffff, 1)
-      .strokeRoundedRect(-100, -40, 200, 80, 10)
-    const lfgButtonText = this.add.text(0, 0, 'LFG', {
-      fontSize: '48px',
-      color: '#ffffff',
-      fontFamily: 'Arial',
-      fontStyle: 'bold',
-    }).setOrigin(0.5)
+      .fillStyle(0x03ad86, 0.8)
+      .fillRect(-150, -buttonHalfHeight, 300, bottomSectionHeight)
+    const lfgButtonIcon = this.add.image(0, 0, 'fallingBlock')
+      .setOrigin(0.5)
     this.lfgButton = this.add.container(
       GameSettings.canvas.width / 2,
-      GameSettings.canvas.height - 30,
-      [this.lfgButtonBg, lfgButtonText]
+      buttonCenterY,
+      [this.lfgButtonBg, lfgButtonIcon]
     )
       .setDepth(1000)
       .setInteractive({
-        hitArea: new Phaser.Geom.Rectangle(-100, -40, 200, 80),
+        hitArea: new Phaser.Geom.Rectangle(-150, -buttonHalfHeight, 300, bottomSectionHeight),
         hitAreaCallback: Phaser.Geom.Rectangle.Contains,
         useHandCursor: true
       })
@@ -1125,21 +1124,24 @@ export class LevelScene extends Phaser.Scene {
       duration: 3000,
       ease: 'Quad.easeIn',
       onUpdate: () => {
-        // Interpolate color from 0x4444ff (dark blue) to 0x88aaff (medium-light blue)
+        // Interpolate color from 0x03ad86 (teal) to 0x33ddaa (light teal)
         const t = this.lfgButtonColorValue
-        const r1 = 0x44, g1 = 0x44, b1 = 0xff
-        const r2 = 0x88, g2 = 0xaa, b2 = 0xff
+        const r1 = 0x03, g1 = 0xad, b1 = 0x86
+        const r2 = 0x33, g2 = 0xdd, b2 = 0xaa
         const r = Math.round(r1 + (r2 - r1) * t)
         const g = Math.round(g1 + (g2 - g1) * t)
         const b = Math.round(b1 + (b2 - b1) * t)
         const color = (r << 16) | (g << 8) | b
 
+        // Calculate button dimensions
+        const gridBottom = ColumnManager.GRID_OFFSET_Y + (ColumnManager.ROWS * ColumnManager.ROW_HEIGHT)
+        const bottomSectionHeight = GameSettings.canvas.height - gridBottom
+        const buttonHalfHeight = bottomSectionHeight / 2
+
         // Redraw button with new color
         this.lfgButtonBg.clear()
         this.lfgButtonBg.fillStyle(color, 0.8)
-        this.lfgButtonBg.fillRoundedRect(-100, -40, 200, 80, 10)
-        this.lfgButtonBg.lineStyle(2, 0xffffff, 1)
-        this.lfgButtonBg.strokeRoundedRect(-100, -40, 200, 80, 10)
+        this.lfgButtonBg.fillRect(-150, -buttonHalfHeight, 300, bottomSectionHeight)
       }
     })
 
@@ -1190,12 +1192,15 @@ export class LevelScene extends Phaser.Scene {
       }
     })
 
+    // Calculate button dimensions
+    const gridBottom = ColumnManager.GRID_OFFSET_Y + (ColumnManager.ROWS * ColumnManager.ROW_HEIGHT)
+    const bottomSectionHeight = GameSettings.canvas.height - gridBottom
+    const buttonHalfHeight = bottomSectionHeight / 2
+
     // Reset button to original color
     this.lfgButtonBg.clear()
-    this.lfgButtonBg.fillStyle(0x4444ff, 0.8)
-    this.lfgButtonBg.fillRoundedRect(-100, -40, 200, 80, 10)
-    this.lfgButtonBg.lineStyle(2, 0xffffff, 1)
-    this.lfgButtonBg.strokeRoundedRect(-100, -40, 200, 80, 10)
+    this.lfgButtonBg.fillStyle(0x03ad86, 0.8)
+    this.lfgButtonBg.fillRect(-150, -buttonHalfHeight, 300, bottomSectionHeight)
 
     // Disable LFG mode in BlockSpawner (also resets spawn rate)
     this.blockSpawner.disableLFGMode()

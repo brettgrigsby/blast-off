@@ -52,6 +52,12 @@ export class TitleScene extends Phaser.Scene {
       'titleText',
       'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/blockboostertitletext-pirM0pmhyj9JEPH99vKYw2AVv5hHxZ.webp?mhq6'
     )
+
+    // Load falling block image for LFG button
+    this.load.image(
+      'fallingBlock',
+      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/tiny-falling-block-peUZaAcFjnJrP8Wd8hIyJBAPKZR7im.webp?J6O4'
+    )
   }
 
   async create(): Promise<void> {
