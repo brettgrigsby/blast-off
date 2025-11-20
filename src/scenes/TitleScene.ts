@@ -84,6 +84,12 @@ export class TitleScene extends Phaser.Scene {
    * This should only be called once when the app starts
    */
   private async initializeGlobalGameState(): Promise<void> {
+    // Check if already initialized - if so, skip SDK fetch and use existing state
+    if (GlobalGameState.hasBeenInitialized()) {
+      console.log('GlobalGameState already initialized, skipping SDK fetch')
+      return
+    }
+
     const globalGameState = GlobalGameState.getInstance()
 
     if (!window.FarcadeSDK) {

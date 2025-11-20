@@ -16,6 +16,7 @@ declare global {
  */
 export class GlobalGameState {
   private static instance: GlobalGameState
+  private static isInitialized: boolean = false
   private gameState: GameState | null = null
 
   private constructor() {}
@@ -33,7 +34,15 @@ export class GlobalGameState {
    */
   initialize(gameState: GameState | null): void {
     this.gameState = gameState
+    GlobalGameState.isInitialized = true
     console.log('GlobalGameState initialized:', this.gameState)
+  }
+
+  /**
+   * Check if GlobalGameState has been initialized from SDK
+   */
+  static hasBeenInitialized(): boolean {
+    return GlobalGameState.isInitialized
   }
 
   /**

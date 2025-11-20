@@ -30,6 +30,7 @@ export class LevelScene extends Phaser.Scene {
 
   // Score tracking (Iteration 5)
   private blocksRemoved: number = 0
+  private finalScore: number = 0
   private scoreText!: Phaser.GameObjects.Text
 
   // Grey block recovery tracking
@@ -65,7 +66,7 @@ export class LevelScene extends Phaser.Scene {
   private columnWarnings: Map<number, Phaser.GameObjects.Rectangle> = new Map()
   private gameOverOverlay!: Phaser.GameObjects.Rectangle
   private gameOverTitle!: Phaser.GameObjects.Text
-  private loadFromSaveButton!: Phaser.GameObjects.Container
+  private tryAgainButton!: Phaser.GameObjects.Container
   private saveScoreButton!: Phaser.GameObjects.Container
   private hasSavedGame: boolean = false
   private savedGameState: GameState | null = null
@@ -702,20 +703,20 @@ export class LevelScene extends Phaser.Scene {
       .setDepth(2001)
       .setVisible(false)
 
-    // Load from Save button
-    const loadButtonBg = this.add.graphics()
+    // Try Again button
+    const tryAgainButtonBg = this.add.graphics()
       .lineStyle(1, 0xffffff, 1)
       .strokeRoundedRect(-150, -40, 300, 80, 10)
-    const loadButtonText = this.add.text(0, 0, 'Load from Save', {
+    const tryAgainButtonText = this.add.text(0, 0, 'Try Again', {
       fontSize: '32px',
       color: '#ffffff',
       fontFamily: 'Arial',
       fontStyle: 'bold',
     }).setOrigin(0.5)
-    this.loadFromSaveButton = this.add.container(
+    this.tryAgainButton = this.add.container(
       GameSettings.canvas.width / 2,
       GameSettings.canvas.height / 2 - 50,
-      [loadButtonBg, loadButtonText]
+      [tryAgainButtonBg, tryAgainButtonText]
     )
       .setDepth(2001)
       .setVisible(false)
@@ -724,7 +725,7 @@ export class LevelScene extends Phaser.Scene {
         hitAreaCallback: Phaser.Geom.Rectangle.Contains,
         useHandCursor: true
       })
-      .on('pointerdown', () => this.loadFromSave())
+      .on('pointerdown', () => this.tryAgain())
 
     // Save Score button
     const saveScoreButtonBg = this.add.graphics()
@@ -957,6 +958,13 @@ export class LevelScene extends Phaser.Scene {
       return
     }
 
+    // Store the final score before clearing state
+    this.finalScore = this.blocksRemoved
+
+    // Clear the global game state immediately
+    const globalGameState = GlobalGameState.getInstance()
+    globalGameState.clearGameState()
+
     // Pause the game
     this.isPaused = true
 
@@ -984,12 +992,8 @@ export class LevelScene extends Phaser.Scene {
     // Show game over overlay
     this.gameOverOverlay.setVisible(true)
     this.gameOverTitle.setVisible(true)
+    this.tryAgainButton.setVisible(true)
     this.saveScoreButton.setVisible(true)
-
-    // Only show Load from Save button if we have a saved game
-    if (this.hasSavedGame && this.savedGameState) {
-      this.loadFromSaveButton.setVisible(true)
-    }
 
     // Hide pause button and LFG button
     this.pauseButton.setVisible(false)
@@ -997,49 +1001,12 @@ export class LevelScene extends Phaser.Scene {
   }
 
   /**
-   * Load from saved game state
+   * Try again - return to title screen after game over
    */
-  private loadFromSave(): void {
-    if (!this.savedGameState) {
-      console.error('No saved game state available')
-      return
-    }
-
-    // Hide game over overlay
-    this.gameOverOverlay.setVisible(false)
-    this.gameOverTitle.setVisible(false)
-    this.loadFromSaveButton.setVisible(false)
-    this.saveScoreButton.setVisible(false)
-
-    // Hide all column warnings and clear timers
-    for (const col of this.columnsAtRisk) {
-      this.hideColumnWarning(col)
-    }
-    this.columnsAtRisk.clear()
-
-    // Clear all lose condition timers
-    for (const timer of this.loseConditionTimers.values()) {
-      timer.remove()
-    }
-    this.loseConditionTimers.clear()
-
-    // Load the saved state
-    this.loadGameState(this.savedGameState)
-
-    // Resume the game
-    this.isPaused = false
-    this.blockSpawner.start()
-    this.inputManager.setEnabled(true)
-    this.physics.resume()
-
-    // Resume grey block safety check
-    if (this.greyBlockSafetyTimer) {
-      this.greyBlockSafetyTimer.paused = false
-    }
-
-    // Show pause button and LFG button
-    this.pauseButton.setVisible(true)
-    this.lfgButton.setVisible(true)
+  private tryAgain(): void {
+    // Stop the current scene and go back to title
+    this.scene.stop('LevelScene')
+    this.scene.start('TitleScene')
   }
 
   /**
@@ -1052,13 +1019,13 @@ export class LevelScene extends Phaser.Scene {
     }
 
     try {
-      // Call SDK gameOver with the current score
+      // Call SDK gameOver with the final score (preserved before state was cleared)
       // Remix will show its own UI over the game
       await window.FarcadeSDK.singlePlayer.actions.gameOver({
-        score: this.blocksRemoved
+        score: this.finalScore
       })
 
-      console.log('Score saved successfully:', this.blocksRemoved)
+      console.log('Score saved successfully:', this.finalScore)
     } catch (error) {
       console.error('Failed to save score:', error)
     }
