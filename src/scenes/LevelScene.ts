@@ -1101,6 +1101,14 @@ export class LevelScene extends Phaser.Scene {
     this.inputManager.setEnabled(true)
     this.physics.resume()
 
+    // Ensure audio is enabled (browser autoplay policy may have muted it)
+    this.sound.setMute(false)
+
+    // Try to unlock audio context if it's locked
+    if (this.sound.locked) {
+      this.sound.unlock()
+    }
+
     // Resume grey block safety check
     if (this.greyBlockSafetyTimer) {
       this.greyBlockSafetyTimer.paused = false
@@ -1434,6 +1442,15 @@ export class LevelScene extends Phaser.Scene {
     }
     if (this.inputManager) {
       this.inputManager.setEnabled(true)
+    }
+
+    // Ensure audio is enabled when loading a saved game
+    // Browser autoplay policies may mute audio until user interaction
+    this.sound.setMute(false)
+
+    // Try to unlock audio context if it's locked
+    if (this.sound.locked) {
+      this.sound.unlock()
     }
 
     console.log('Game state loaded successfully')
