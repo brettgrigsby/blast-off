@@ -1,6 +1,7 @@
 import type { FarcadeSDK } from '@farcade/game-sdk'
 import GameSettings from '../config/GameSettings'
 import { GlobalGameState } from '../systems/GlobalGameState'
+import { getLevelConfig } from '../config/LevelMap'
 
 declare global {
   interface Window {
@@ -71,7 +72,14 @@ export class TitleScene extends Phaser.Scene {
     // Check if there's a saved game
     const globalGameState = GlobalGameState.getInstance()
     if (globalGameState.hasSavedGame()) {
-      this.scene.start('LevelScene')
+      const gameState = globalGameState.getGameState()
+      const levelId = gameState?.currentLevel?.levelId || 'quick-play'
+      const levelConfig = getLevelConfig(levelId as any)
+
+      this.scene.start('LevelScene', {
+        levelConfig,
+        levelId
+      })
       return
     }
 
@@ -149,6 +157,8 @@ export class TitleScene extends Phaser.Scene {
       .on('pointerdown', () => this.startGame())
 
     // Create STORY MODE button
+    // TODO: Uncomment when ready to enable story mode
+    /*
     const storyButtonBg = this.add.graphics()
       .fillStyle(0x000000, 0.85)
       .fillRoundedRect(-200, -50, 400, 100, 15)
@@ -171,15 +181,21 @@ export class TitleScene extends Phaser.Scene {
         useHandCursor: true,
       })
       .on('pointerdown', () => this.startStoryMode())
+    */
   }
 
   private startGame(): void {
     // Stop the background LevelScene instance
     this.scene.stop('LevelScene')
 
+    // Get the quick-play level configuration
+    const levelConfig = getLevelConfig('quick-play')
+
     // Start a fresh LevelScene for actual gameplay
-    // Must pass empty object to override previous backgroundMode data
-    this.scene.start('LevelScene', {})
+    this.scene.start('LevelScene', {
+      levelConfig,
+      levelId: 'quick-play'
+    })
   }
 
   private startStoryMode(): void {

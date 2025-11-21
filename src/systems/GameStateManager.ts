@@ -30,6 +30,7 @@ interface SaveState {
 // Top-level game state structure
 export interface GameState {
   currentLevel: {
+    levelId: string
     boardState: SaveState
   }
 }
@@ -40,12 +41,14 @@ export class GameStateManager {
    * @param columnManager The column manager containing all blocks and groups
    * @param blocksRemoved The current score (blocks removed)
    * @param loseConditionTimers Map of column timers for lose condition
+   * @param levelId The ID of the current level being played
    * @returns GameState with currentLevel.boardState structure
    */
   static serialize(
     columnManager: ColumnManager,
     blocksRemoved: number,
-    loseConditionTimers: Map<number, Phaser.Time.TimerEvent>
+    loseConditionTimers: Map<number, Phaser.Time.TimerEvent>,
+    levelId: string
   ): GameState {
     const allBlocks = columnManager.getAllBlocks()
     const groups = columnManager.getGroups()
@@ -147,30 +150,37 @@ export class GameStateManager {
     // Wrap in the new structure
     return {
       currentLevel: {
+        levelId,
         boardState: saveState
       }
     }
   }
 
   /**
-   * Extract the SaveState from the nested GameState structure
+   * Extract the SaveState and levelId from the nested GameState structure
    * Handles both old format (direct SaveState) and new format (GameState with currentLevel.boardState)
    * @param data The saved game data (either SaveState or GameState)
-   * @returns SaveState for loading
+   * @returns Object with saveState and levelId, or null if invalid
    */
-  static deserialize(data: any): SaveState | null {
+  static deserialize(data: any): { saveState: SaveState; levelId: string } | null {
     if (!data) {
       return null
     }
 
     // Check if this is the new format with currentLevel.boardState
     if (data.currentLevel && data.currentLevel.boardState) {
-      return data.currentLevel.boardState as SaveState
+      return {
+        saveState: data.currentLevel.boardState as SaveState,
+        levelId: data.currentLevel.levelId || 'quick-play' // Default to quick-play if missing
+      }
     }
 
     // Check if this is the old format (direct SaveState with version field)
     if (data.v !== undefined && data.s !== undefined && data.b !== undefined) {
-      return data as SaveState
+      return {
+        saveState: data as SaveState,
+        levelId: 'quick-play' // Old saves default to quick-play
+      }
     }
 
     console.error('Invalid game state format:', data)

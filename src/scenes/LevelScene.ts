@@ -20,6 +20,7 @@ declare global {
 export class LevelScene extends Phaser.Scene {
   private isMultiplayer: boolean = false
   private isBackgroundMode: boolean = false
+  private currentLevelId: string = 'quick-play'
   private levelConfig!: LevelConfig
   private columnManager!: ColumnManager
   private gridLinesGraphics!: Phaser.GameObjects.Graphics
@@ -75,9 +76,10 @@ export class LevelScene extends Phaser.Scene {
     super({ key: 'LevelScene' })
   }
 
-  create(data?: { backgroundMode?: boolean; levelConfig?: Partial<LevelConfig> }): void {
+  create(data?: { backgroundMode?: boolean; levelConfig?: Partial<LevelConfig>; levelId?: string }): void {
     // Reset state variables (scene instance may be reused by Phaser)
     this.isBackgroundMode = data?.backgroundMode === true
+    this.currentLevelId = data?.levelId || 'quick-play'
     this.isPaused = false
     this.isLFGActive = false
     this.blocksRemoved = 0
@@ -1235,7 +1237,8 @@ export class LevelScene extends Phaser.Scene {
       const gameState = GameStateManager.serialize(
         this.columnManager,
         this.blocksRemoved,
-        this.loseConditionTimers
+        this.loseConditionTimers,
+        this.currentLevelId
       )
 
       // Update global state (this will save to SDK as a side effect)
@@ -1270,14 +1273,17 @@ export class LevelScene extends Phaser.Scene {
    * Accepts both old format (SaveState) and new format (GameState with currentLevel.boardState)
    */
   private loadGameState(data: any): void {
-    // Extract SaveState from the data (handles both old and new formats)
-    const saveState = GameStateManager.deserialize(data)
-    if (!saveState) {
+    // Extract SaveState and levelId from the data (handles both old and new formats)
+    const deserialized = GameStateManager.deserialize(data)
+    if (!deserialized) {
       console.error('Failed to deserialize game state')
       return
     }
 
-    console.log('Loading game state', saveState)
+    const { saveState, levelId } = deserialized
+    this.currentLevelId = levelId
+
+    console.log('Loading game state', saveState, 'for level', levelId)
 
     // Stop game systems temporarily
     if (this.blockSpawner) {
