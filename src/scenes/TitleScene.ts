@@ -72,15 +72,15 @@ export class TitleScene extends Phaser.Scene {
     )
     this.load.audio(
       'match_3',
-      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/boost_3-PWl71enALQc9YXdNIIIwyPUvxJ9IyF.wav?0zdZ'
+      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/match_3-Oe0bWYcnQhmaGKBEcnuQIE12LJfHqS.wav?fEEx'
     )
     this.load.audio(
       'match_4',
-      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/boost_4-SVrZDqnuUw8Ui4yMNTV7CqKspqK5dA.wav?FzZR'
+      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/match_4-BH7DKySoYngpk72ZsNcFVaudup8Gwm.wav?bKID'
     )
     this.load.audio(
       'match_5',
-      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/boost_5-29jC0wwz6JzWWLpP8EhOXkm7RlFC96.wav?mDFj'
+      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/match_5-2PYuGoqww3tw5ZqwQAcKo41Uf1fsdf.wav?au2c'
     )
   }
 
