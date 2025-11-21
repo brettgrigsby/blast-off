@@ -768,6 +768,9 @@ export class LevelScene extends Phaser.Scene {
    * @param boostCount The current boost count of the group (0 for new match, 1+ for subsequent matches)
    */
   public playMatchSound(boostCount: number): void {
+    // Don't play sounds in background mode
+    if (this.isBackgroundMode) return
+
     // Map boost count to sound key (0->match_1, 1->match_2, ..., 4+->match_5)
     const soundIndex = Math.min(boostCount + 1, 5)
     const soundKey = `match_${soundIndex}`
