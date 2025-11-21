@@ -140,6 +140,9 @@ export class LevelScene extends Phaser.Scene {
           // Merge otherGroup into this group (combines momentum)
           group.mergeWith(otherGroup)
 
+          // Play match sound for merged group (using new boostCount after merge)
+          this.playMatchSound(group.getBoostCount())
+
           // Mark otherGroup for removal (it's been merged)
           groupsToRemove.push(otherGroup)
         }
