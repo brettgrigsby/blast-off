@@ -2,6 +2,7 @@ import type { FarcadeSDK } from '@farcade/game-sdk'
 import GameSettings from '../config/GameSettings'
 import { GlobalGameState } from '../systems/GlobalGameState'
 import { getLevelConfig } from '../config/LevelMap'
+import { SoundManager } from '../systems/SoundManager'
 
 declare global {
   interface Window {
@@ -61,27 +62,9 @@ export class TitleScene extends Phaser.Scene {
       'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/tiny-falling-block-peUZaAcFjnJrP8Wd8hIyJBAPKZR7im.webp?J6O4'
     )
 
-    // Load match sounds
-    this.load.audio(
-      'match_1',
-      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/match_1-dB63L3FhkSb0nJ3VCH3vSnD3pU0Nl0.wav?odCG'
-    )
-    this.load.audio(
-      'match_2',
-      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/match_2-FdLMyA6tIxK3CjpFjDDq0dDkfbLbIn.wav?hwLy'
-    )
-    this.load.audio(
-      'match_3',
-      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/match_3-Oe0bWYcnQhmaGKBEcnuQIE12LJfHqS.wav?fEEx'
-    )
-    this.load.audio(
-      'match_4',
-      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/match_4-BH7DKySoYngpk72ZsNcFVaudup8Gwm.wav?bKID'
-    )
-    this.load.audio(
-      'match_5',
-      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/match_5-2PYuGoqww3tw5ZqwQAcKo41Uf1fsdf.wav?au2c'
-    )
+    // Load match sounds using SoundManager
+    const soundManager = new SoundManager(this)
+    soundManager.loadAudio()
   }
 
   async create(): Promise<void> {

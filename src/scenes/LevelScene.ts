@@ -10,6 +10,7 @@ import { MatchDetector } from '../systems/MatchDetector'
 import { ColorAssigner } from '../systems/ColorAssigner'
 import { GameStateManager, type GameState } from '../systems/GameStateManager'
 import { GlobalGameState } from '../systems/GlobalGameState'
+import { SoundManager } from '../systems/SoundManager'
 
 declare global {
   interface Window {
@@ -28,6 +29,7 @@ export class LevelScene extends Phaser.Scene {
   private inputManager!: InputManager
   private matchDetector!: MatchDetector
   private colorAssigner!: ColorAssigner
+  private soundManager!: SoundManager
 
   // Score tracking (Iteration 5)
   private blocksRemoved: number = 0
@@ -141,7 +143,7 @@ export class LevelScene extends Phaser.Scene {
           group.mergeWith(otherGroup)
 
           // Play match sound for merged group (using new boostCount after merge)
-          this.playMatchSound(group.getBoostCount())
+          this.soundManager.playMatchSound(group.getBoostCount())
 
           // Mark otherGroup for removal (it's been merged)
           groupsToRemove.push(otherGroup)
@@ -419,7 +421,13 @@ export class LevelScene extends Phaser.Scene {
     })
 
     window.FarcadeSDK.on('toggle_mute', (data: { isMuted: boolean }) => {
-      // Handle mute toggle if needed
+      if (this.soundManager) {
+        if (data.isMuted) {
+          this.soundManager.mute()
+        } else {
+          this.soundManager.unmute()
+        }
+      }
     })
 
     if (this.isMultiplayer) {
@@ -458,6 +466,11 @@ export class LevelScene extends Phaser.Scene {
   }
 
   private createGameElements(): void {
+    // Initialize sound manager
+    this.soundManager = new SoundManager(this)
+    this.soundManager.initialize()
+    this.soundManager.setBackgroundMode(this.isBackgroundMode)
+
     // Create flame animation if sprite sheet loaded
     if (this.textures.exists('flame')) {
       const texture = this.textures.get('flame');
@@ -768,20 +781,11 @@ export class LevelScene extends Phaser.Scene {
 
   /**
    * Play match sound based on boost count
+   * Public method for MatchDetector and other systems
    * @param boostCount The current boost count of the group (0 for new match, 1+ for subsequent matches)
    */
   public playMatchSound(boostCount: number): void {
-    // Don't play sounds in background mode
-    if (this.isBackgroundMode) return
-
-    // Map boost count to sound key (0->match_1, 1->match_2, ..., 4+->match_5)
-    const soundIndex = Math.min(boostCount + 1, 5)
-    const soundKey = `match_${soundIndex}`
-
-    // Play the sound if it exists
-    if (this.sound && this.cache.audio.exists(soundKey)) {
-      this.sound.play(soundKey)
-    }
+    this.soundManager.playMatchSound(boostCount)
   }
 
   /**
@@ -1101,13 +1105,8 @@ export class LevelScene extends Phaser.Scene {
     this.inputManager.setEnabled(true)
     this.physics.resume()
 
-    // Ensure audio is enabled (browser autoplay policy may have muted it)
-    this.sound.setMute(false)
-
-    // Try to unlock audio context if it's locked
-    if (this.sound.locked) {
-      this.sound.unlock()
-    }
+    // Ensure audio is enabled
+    this.soundManager.unmute()
 
     // Resume grey block safety check
     if (this.greyBlockSafetyTimer) {
@@ -1445,13 +1444,7 @@ export class LevelScene extends Phaser.Scene {
     }
 
     // Ensure audio is enabled when loading a saved game
-    // Browser autoplay policies may mute audio until user interaction
-    this.sound.setMute(false)
-
-    // Try to unlock audio context if it's locked
-    if (this.sound.locked) {
-      this.sound.unlock()
-    }
+    this.soundManager.unmute()
 
     console.log('Game state loaded successfully')
   }
