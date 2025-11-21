@@ -60,6 +60,28 @@ export class TitleScene extends Phaser.Scene {
       'fallingBlock',
       'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/tiny-falling-block-peUZaAcFjnJrP8Wd8hIyJBAPKZR7im.webp?J6O4'
     )
+
+    // Load match sounds
+    this.load.audio(
+      'match_1',
+      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/match_1-cpb0NDaqSv4tuocyqOujgQbDPdMybH.wav?8mnN'
+    )
+    this.load.audio(
+      'match_2',
+      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/match_2-eBBiZYigJrvu0wlzREPCwGvg5iDmFX.wav?BhTB'
+    )
+    this.load.audio(
+      'match_3',
+      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/match_3-NlPSrDHu3CbYTwDDN23nxbpbZTynDe.wav?ccX7'
+    )
+    this.load.audio(
+      'match_4',
+      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/match_4-f6c3o4jeaOmWWefuZPaGpfeK9GNgHn.wav?exie'
+    )
+    this.load.audio(
+      'match_5',
+      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/match_5-wiHQNx9F8EKTzHopKhJnGyIelg4pti.wav?TpQ0'
+    )
   }
 
   async create(): Promise<void> {

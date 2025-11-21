@@ -482,7 +482,7 @@ export class LevelScene extends Phaser.Scene {
     this.columnManager.drawGridLines(this.gridLinesGraphics)
 
     // Initialize match detector (Iteration 4)
-    this.matchDetector = new MatchDetector(this.columnManager)
+    this.matchDetector = new MatchDetector(this.columnManager, this)
 
     // Initialize color assigner for smart grey block recovery
     this.colorAssigner = new ColorAssigner(this.columnManager)
@@ -760,6 +760,21 @@ export class LevelScene extends Phaser.Scene {
   private updateScoreDisplay(): void {
     if (this.scoreText) {
       this.scoreText.setText(`${this.blocksRemoved}`)
+    }
+  }
+
+  /**
+   * Play match sound based on boost count
+   * @param boostCount The current boost count of the group (0 for new match, 1+ for subsequent matches)
+   */
+  public playMatchSound(boostCount: number): void {
+    // Map boost count to sound key (0->match_1, 1->match_2, ..., 4+->match_5)
+    const soundIndex = Math.min(boostCount + 1, 5)
+    const soundKey = `match_${soundIndex}`
+
+    // Play the sound if it exists
+    if (this.sound && this.cache.audio.exists(soundKey)) {
+      this.sound.play(soundKey)
     }
   }
 

@@ -1,6 +1,7 @@
 import { Block, BlockColor } from '../objects/Block';
 import { BlockGroup } from '../objects/BlockGroup';
 import { ColumnManager } from './ColumnManager';
+import type { LevelScene } from '../scenes/LevelScene';
 
 export interface MatchResult {
   blocks: Block[];
@@ -9,9 +10,11 @@ export interface MatchResult {
 
 export class MatchDetector {
   private columnManager: ColumnManager;
+  private scene: LevelScene;
 
-  constructor(columnManager: ColumnManager) {
+  constructor(columnManager: ColumnManager, scene: LevelScene) {
     this.columnManager = columnManager;
+    this.scene = scene;
   }
 
   /**
@@ -228,6 +231,9 @@ export class MatchDetector {
         const launchVelocity = this.getLaunchVelocity(matchResult.size, true, existingGroup.getBoostCount());
         existingGroup.addVelocity(launchVelocity);
         existingGroup.incrementBoostCount();
+
+        // Play match sound for boosted group (using new boostCount)
+        this.scene.playMatchSound(existingGroup.getBoostCount());
       } else {
         // Create ONE group for ALL blocks (across all columns)
         const groupBlocks: Block[] = [];
@@ -251,6 +257,9 @@ export class MatchDetector {
           massGravityFactor: this.columnManager.massGravityFactor,
         });
         this.columnManager.addGroup(group);
+
+        // Play match sound for new group (boostCount = 0)
+        this.scene.playMatchSound(0);
       }
 
       return matchResult.blocks.length; // Return only matched blocks for score
@@ -304,6 +313,9 @@ export class MatchDetector {
 
       // Increment the boost count for this group
       group.incrementBoostCount();
+
+      // Play match sound for in-motion match (using new boostCount)
+      this.scene.playMatchSound(group.getBoostCount());
 
       return matchedBlocks.size;
     }
