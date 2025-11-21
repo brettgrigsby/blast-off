@@ -64,23 +64,23 @@ export class TitleScene extends Phaser.Scene {
     // Load match sounds
     this.load.audio(
       'match_1',
-      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/match_1-cpb0NDaqSv4tuocyqOujgQbDPdMybH.wav?8mnN'
+      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/match_1-dB63L3FhkSb0nJ3VCH3vSnD3pU0Nl0.wav?odCG'
     )
     this.load.audio(
       'match_2',
-      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/match_2-eBBiZYigJrvu0wlzREPCwGvg5iDmFX.wav?BhTB'
+      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/match_2-FdLMyA6tIxK3CjpFjDDq0dDkfbLbIn.wav?hwLy'
     )
     this.load.audio(
       'match_3',
-      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/match_3-NlPSrDHu3CbYTwDDN23nxbpbZTynDe.wav?ccX7'
+      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/boost_3-PWl71enALQc9YXdNIIIwyPUvxJ9IyF.wav?0zdZ'
     )
     this.load.audio(
       'match_4',
-      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/match_4-f6c3o4jeaOmWWefuZPaGpfeK9GNgHn.wav?exie'
+      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/boost_4-SVrZDqnuUw8Ui4yMNTV7CqKspqK5dA.wav?FzZR'
     )
     this.load.audio(
       'match_5',
-      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/match_5-wiHQNx9F8EKTzHopKhJnGyIelg4pti.wav?TpQ0'
+      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/boost_5-29jC0wwz6JzWWLpP8EhOXkm7RlFC96.wav?mDFj'
     )
   }
 
