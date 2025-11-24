@@ -226,8 +226,8 @@ export class BlockSpawner {
     this.isLFGMode = false;
     this.currentSpawnRate = this.baseSpawnRate;
 
-    // Resume regular spawning
-    if (this.spawnTimer) {
+    // Resume regular spawning only if not in dump mode
+    if (this.spawnTimer && !this.isDumpActive()) {
       this.spawnTimer.paused = false;
     }
   }
