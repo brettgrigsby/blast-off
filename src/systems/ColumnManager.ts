@@ -392,14 +392,13 @@ export class ColumnManager {
    * Place a moving block at a specific Y position in its column
    */
   public placeBlock(block: Block, columnIndex: number, y: number): void {
-    // Update column if changed
-    if (block.column !== columnIndex) {
-      // Remove from old column
-      if (this.isValidColumn(block.column)) {
-        this.columns[block.column].removeBlock(block);
-      }
-      block.column = columnIndex;
+    // Always remove block from its current column first to avoid duplicates
+    if (this.isValidColumn(block.column)) {
+      this.columns[block.column].removeBlock(block);
     }
+
+    // Update column
+    block.column = columnIndex;
 
     // Update position
     const x = this.getColumnCenterX(columnIndex);

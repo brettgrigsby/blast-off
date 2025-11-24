@@ -162,7 +162,10 @@ export class LevelScene extends Phaser.Scene {
         if (block.isAboveScreen() && block.velocityY <= 0) {
           group.removeBlock(block)
           this.columnManager.removeBlock(block)
-          this.blocksRemoved++
+          // Only count if not individually flicked
+          if (!block.wasFlickedIndividually) {
+            this.blocksRemoved++
+          }
           blocksRemovedThisFrame = true
         }
       }
@@ -205,6 +208,10 @@ export class LevelScene extends Phaser.Scene {
             // Block hasn't collided yet, let it fall independently
             block.setVelocity(block.velocityY)
           }
+
+          // Remove block from group immediately to allow match detection
+          // This prevents blocks from being excluded from matches due to stale group membership
+          group.removeBlock(block)
         }
         groupsToRemove.push(group)
       }
@@ -241,6 +248,8 @@ export class LevelScene extends Phaser.Scene {
               // Only join if it won't cause overlap
               if (targetY !== null && !group.wouldOverlap(block, targetY)) {
                 group.addBlock(block)
+                // Clear flicked flag since block is now part of a group
+                block.wasFlickedIndividually = false
                 joinedGroup = true
                 break
               }
@@ -276,11 +285,17 @@ export class LevelScene extends Phaser.Scene {
         if (isFullyAbove) {
           // Group went fully above screen - remove all blocks
           this.columnManager.removeBlock(block)
-          this.blocksRemoved++
+          // Only count if not individually flicked
+          if (!block.wasFlickedIndividually) {
+            this.blocksRemoved++
+          }
         } else if (block.isAboveScreen()) {
           // Group disbanded but some blocks are above - remove only those
           this.columnManager.removeBlock(block)
-          this.blocksRemoved++
+          // Only count if not individually flicked
+          if (!block.wasFlickedIndividually) {
+            this.blocksRemoved++
+          }
         }
       }
       this.columnManager.removeGroup(group)
@@ -289,7 +304,10 @@ export class LevelScene extends Phaser.Scene {
     // Remove individual blocks that went above screen
     for (const block of blocksToRemove) {
       this.columnManager.removeBlock(block)
-      this.blocksRemoved++
+      // Only count if not individually flicked
+      if (!block.wasFlickedIndividually) {
+        this.blocksRemoved++
+      }
     }
 
     // Update score display if blocks were removed

@@ -29,6 +29,7 @@ export class Block {
   // Movement properties
   public velocityY: number = 0;
   public isInGrid: boolean = false; // True when block is in the grid array, false otherwise
+  public wasFlickedIndividually: boolean = false; // True when block was flicked up individually (not from a match)
 
   // Visual state
   public selected: boolean = false; // True when block is selected by player

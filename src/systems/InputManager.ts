@@ -317,6 +317,9 @@ export class InputManager {
     this.columnManager.removeBlockFromColumn(block);
     block.isInGrid = false;
 
+    // Mark as individually flicked so it doesn't count towards goal if it leaves
+    block.wasFlickedIndividually = true;
+
     // Apply high upward velocity
     block.setVelocity(SHOOT_VELOCITY);
 
