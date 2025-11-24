@@ -122,6 +122,82 @@ export class Block {
       Block.BLOCK_WIDTH - Block.BORDER_WIDTH * 2,
       Block.BLOCK_HEIGHT - Block.BORDER_WIDTH * 2
     );
+
+    // Draw shape overlay for accessibility
+    this.drawShapeOverlay();
+  }
+
+  /**
+   * Draw shape overlay for color-blind accessibility
+   * Each color has a corresponding shape rendered at 50% opacity in the center
+   */
+  private drawShapeOverlay(): void {
+    const centerX = this.x;
+    const centerY = this.y;
+    const shapeSize = 50;
+
+    // Set fill style for shapes - black at 40% opacity
+    this.graphics.fillStyle(0x000000, 0.4);
+
+    switch (this.color) {
+      case BlockColor.RED:
+        // Triangle pointing upward
+        this.graphics.fillTriangle(
+          centerX, centerY - shapeSize / 2,           // Top point
+          centerX - shapeSize / 2, centerY + shapeSize / 2,  // Bottom left
+          centerX + shapeSize / 2, centerY + shapeSize / 2   // Bottom right
+        );
+        break;
+
+      case BlockColor.BLUE:
+        // Circle
+        this.graphics.fillCircle(centerX, centerY, shapeSize / 2);
+        break;
+
+      case BlockColor.GREEN:
+        // Square
+        this.graphics.fillRect(
+          centerX - shapeSize / 2,
+          centerY - shapeSize / 2,
+          shapeSize,
+          shapeSize
+        );
+        break;
+
+      case BlockColor.YELLOW:
+        // Two squares - top left and bottom right
+        const squareSize = shapeSize / 2.5;
+
+        // Top left square
+        this.graphics.fillRect(
+          centerX - shapeSize / 2,
+          centerY - shapeSize / 2,
+          squareSize,
+          squareSize
+        );
+
+        // Bottom right square
+        this.graphics.fillRect(
+          centerX + shapeSize / 2 - squareSize,
+          centerY + shapeSize / 2 - squareSize,
+          squareSize,
+          squareSize
+        );
+        break;
+
+      case BlockColor.PURPLE:
+        // Right triangle in bottom right corner
+        this.graphics.fillTriangle(
+          centerX + shapeSize / 2, centerY - shapeSize / 2,  // Top right
+          centerX + shapeSize / 2, centerY + shapeSize / 2,  // Bottom right (right angle)
+          centerX - shapeSize / 2, centerY + shapeSize / 2   // Bottom left
+        );
+        break;
+
+      case BlockColor.GREY:
+        // No shape for grey blocks
+        break;
+    }
   }
 
   /**
