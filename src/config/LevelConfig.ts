@@ -19,6 +19,9 @@ export interface LevelConfig {
 
   /** Time in milliseconds between block dumps */
   dumpInterval: number
+
+  /** Number of blocks to remove to complete the level (undefined = infinite mode) */
+  blockCountGoal?: number
 }
 
 /**
@@ -31,6 +34,7 @@ export const DEFAULT_LEVEL_CONFIG: LevelConfig = {
   greyRecoveryDelay: 2000,
   spawnRate: 1000,
   dumpInterval: 30000,
+  blockCountGoal: 500,
 }
 
 /**

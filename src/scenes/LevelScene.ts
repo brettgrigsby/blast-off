@@ -35,6 +35,7 @@ export class LevelScene extends Phaser.Scene {
   private blocksRemoved: number = 0
   private finalScore: number = 0
   private scoreText!: Phaser.GameObjects.Text
+  private startTime: number = 0
 
   // Grey block recovery tracking
   private blocksReadyToRecover: Block[] = []
@@ -294,6 +295,13 @@ export class LevelScene extends Phaser.Scene {
     // Update score display if blocks were removed
     if (blocksToRemove.length > 0 || groupsToRemove.length > 0 || blocksRemovedThisFrame) {
       this.updateScoreDisplay()
+
+      // Check for win condition (goal reached)
+      if (this.levelConfig.blockCountGoal !== undefined &&
+          this.blocksRemoved >= this.levelConfig.blockCountGoal) {
+        this.handleLevelComplete()
+        return // Stop update loop
+      }
     }
 
     // Check for lose condition (columns too tall)
@@ -540,6 +548,9 @@ export class LevelScene extends Phaser.Scene {
       .setOrigin(0, 1)
       .setDepth(1000) // Keep text above blocks
 
+    // Initialize score display with correct value (countdown or count-up)
+    this.updateScoreDisplay()
+
     // Add pause button at bottom right (two rectangles)
     // Rectangles: centered at their positions, spans x:0-16 and x:24-40, y:-20 to 20
     const pauseRect1 = this.add.rectangle(8, 0, 16, 40, 0xffffff)
@@ -691,6 +702,9 @@ export class LevelScene extends Phaser.Scene {
       // Make sure input is enabled for normal gameplay
       this.inputManager.setEnabled(true)
     }
+
+    // Initialize start time for level completion tracking
+    this.startTime = Date.now()
   }
 
   /**
@@ -772,10 +786,18 @@ export class LevelScene extends Phaser.Scene {
 
   /**
    * Update the score display (Iteration 5)
+   * Shows countdown when blockCountGoal is set, otherwise shows count up
    */
   private updateScoreDisplay(): void {
     if (this.scoreText) {
-      this.scoreText.setText(`${this.blocksRemoved}`)
+      if (this.levelConfig.blockCountGoal !== undefined) {
+        // Countdown mode - show remaining blocks
+        const remaining = Math.max(0, this.levelConfig.blockCountGoal - this.blocksRemoved)
+        this.scoreText.setText(`${remaining}`)
+      } else {
+        // Count up mode - show blocks removed (original behavior)
+        this.scoreText.setText(`${this.blocksRemoved}`)
+      }
     }
   }
 
@@ -976,6 +998,71 @@ export class LevelScene extends Phaser.Scene {
   }
 
   /**
+   * Handle level completion (goal reached)
+   * Calculate time-based score and trigger SDK gameOver
+   */
+  private async handleLevelComplete(): Promise<void> {
+    // Calculate elapsed time in seconds
+    const elapsedMs = Date.now() - this.startTime
+    const elapsedSeconds = elapsedMs / 1000
+
+    // Calculate score using linear formula:
+    // 30000 points at 0 seconds, decreasing to 1 point at 30 minutes (1800 seconds)
+    // Formula: 30000 - (seconds * 30000 / 1800) = 30000 - (seconds * 16.667)
+    let score: number
+    if (elapsedSeconds >= 1800) {
+      // 30 minutes or more = 1 point
+      score = 1
+    } else {
+      // Linear decrease from 30000 to 1
+      score = Math.max(1, Math.floor(30000 - (elapsedSeconds * 30000 / 1800)))
+    }
+
+    console.log(`Level complete! Time: ${elapsedSeconds.toFixed(1)}s, Score: ${score}`)
+
+    // Pause the game
+    this.isPaused = true
+
+    // Stop LFG mode if active
+    if (this.isLFGActive) {
+      this.handleLFGUp()
+    }
+
+    // Stop game systems
+    this.blockSpawner.stop()
+    this.inputManager.setEnabled(false)
+
+    // Stop grey block safety check
+    if (this.greyBlockSafetyTimer) {
+      this.greyBlockSafetyTimer.paused = true
+    }
+
+    // Stop all lose condition timers
+    for (const timer of this.loseConditionTimers.values()) {
+      timer.remove()
+    }
+    this.loseConditionTimers.clear()
+
+    // Clear the global game state (level complete)
+    const globalGameState = GlobalGameState.getInstance()
+    globalGameState.clearGameState()
+
+    // Call SDK gameOver with the calculated score
+    if (window.FarcadeSDK) {
+      try {
+        await window.FarcadeSDK.singlePlayer.actions.gameOver({
+          score: score
+        })
+        console.log('Victory! Score saved successfully:', score)
+      } catch (error) {
+        console.error('Failed to save victory score:', error)
+      }
+    } else {
+      console.log('SDK not available, victory score:', score)
+    }
+  }
+
+  /**
    * Trigger game over - show game over overlay
    */
   private triggerGameOver(): void {
@@ -1016,11 +1103,11 @@ export class LevelScene extends Phaser.Scene {
     }
     this.loseConditionTimers.clear()
 
-    // Show game over overlay
+    // Show game over overlay (loss - don't show Save Score button)
     this.gameOverOverlay.setVisible(true)
     this.gameOverTitle.setVisible(true)
     this.tryAgainButton.setVisible(true)
-    this.saveScoreButton.setVisible(true)
+    this.saveScoreButton.setVisible(false) // Don't save score on loss
 
     // Hide pause button and LFG button
     this.pauseButton.setVisible(false)
