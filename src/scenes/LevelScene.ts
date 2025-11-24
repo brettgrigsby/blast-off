@@ -418,6 +418,8 @@ export class LevelScene extends Phaser.Scene {
       return
     }
 
+    console.log('SDK detected, setting up event listeners')
+
     // Determine multiplayer mode based on build configuration
     // @ts-ignore - This is defined by Vite's define config
     this.isMultiplayer =
@@ -425,11 +427,16 @@ export class LevelScene extends Phaser.Scene {
 
     // Set up SDK event listeners
     window.FarcadeSDK.on('play_again', () => {
+      console.log('play_again event received')
       this.scene.restart()
     })
 
+    console.log('Registering toggle_mute listener')
     window.FarcadeSDK.on('toggle_mute', (data: { isMuted: boolean }) => {
+      console.log('toggle_mute event received:', data)
+      console.log('soundManager exists:', !!this.soundManager)
       if (this.soundManager) {
+        console.log('Calling', data.isMuted ? 'mute()' : 'unmute()')
         if (data.isMuted) {
           this.soundManager.mute()
         } else {
@@ -437,6 +444,7 @@ export class LevelScene extends Phaser.Scene {
         }
       }
     })
+    console.log('toggle_mute listener registered')
 
     if (this.isMultiplayer) {
       window.FarcadeSDK.on('game_state_updated', (gameState: any) => {
@@ -1192,9 +1200,6 @@ export class LevelScene extends Phaser.Scene {
     this.inputManager.setEnabled(true)
     this.physics.resume()
 
-    // Ensure audio is enabled
-    this.soundManager.unmute()
-
     // Resume grey block safety check
     if (this.greyBlockSafetyTimer) {
       this.greyBlockSafetyTimer.paused = false
@@ -1529,9 +1534,6 @@ export class LevelScene extends Phaser.Scene {
     if (this.inputManager) {
       this.inputManager.setEnabled(true)
     }
-
-    // Ensure audio is enabled when loading a saved game
-    this.soundManager.unmute()
 
     console.log('Game state loaded successfully')
   }

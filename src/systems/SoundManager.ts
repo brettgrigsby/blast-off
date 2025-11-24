@@ -72,9 +72,11 @@ export class SoundManager {
    * Mute all sounds
    */
   public mute(): void {
+    console.log('SoundManager.mute() called')
     this.isMuted = true
     if (this.scene.sound) {
       this.scene.sound.setMute(true)
+      console.log('Phaser sound muted')
     }
   }
 
@@ -82,10 +84,12 @@ export class SoundManager {
    * Unmute all sounds and ensure audio context is unlocked
    */
   public unmute(): void {
+    console.log('SoundManager.unmute() called')
     this.isMuted = false
     if (this.scene.sound) {
       this.scene.sound.setMute(false)
       this.ensureUnlocked()
+      console.log('Phaser sound unmuted')
     }
   }
 
