@@ -3,6 +3,8 @@ import { Block, BlockColor } from '../objects/Block';
 import { ColumnManager } from './ColumnManager';
 import type { LevelScene } from '../scenes/LevelScene';
 import { DumpShapeGenerator, type DumpShape } from './DumpShapeGenerator';
+import type { LevelConfig } from '../config/LevelConfig';
+import { calculateRampedValue } from '../config/LevelConfig';
 
 export class BlockSpawner {
   private scene: LevelScene;
@@ -19,6 +21,8 @@ export class BlockSpawner {
   // Level-specific configuration (instance properties)
   private spawnRate: number;
   private dumpInterval: number;
+  private levelConfig: LevelConfig;
+  private gameStartTime: number | null = null;
 
   // LFG mode configuration
   private isLFGMode: boolean = false;
@@ -27,15 +31,52 @@ export class BlockSpawner {
   private hapticCallback: (() => void) | null = null;
   private lastLFGSpawnTime: number = 0;
 
-  constructor(scene: LevelScene, columnManager: ColumnManager, config?: { spawnRate?: number; dumpInterval?: number }) {
+  constructor(scene: LevelScene, columnManager: ColumnManager, levelConfig: LevelConfig) {
     this.scene = scene;
     this.columnManager = columnManager;
+    this.levelConfig = levelConfig;
 
-    // Set configuration with defaults
-    this.spawnRate = config?.spawnRate ?? 1000;
-    this.dumpInterval = config?.dumpInterval ?? 30000;
+    // Set initial configuration
+    this.spawnRate = levelConfig.spawnRate;
+    this.dumpInterval = levelConfig.dumpInterval;
     this.baseSpawnRate = this.spawnRate;
     this.currentSpawnRate = this.spawnRate;
+  }
+
+  /**
+   * Get the current spawn rate accounting for difficulty ramping
+   */
+  private getRampedSpawnRate(): number {
+    if (!this.levelConfig.spawnRateRamp || this.gameStartTime === null) {
+      return this.levelConfig.spawnRate;
+    }
+
+    const elapsedMs = this.scene.time.now - this.gameStartTime;
+    return calculateRampedValue(this.levelConfig.spawnRateRamp, elapsedMs);
+  }
+
+  /**
+   * Get the current dump interval accounting for difficulty ramping
+   */
+  private getRampedDumpInterval(): number {
+    if (!this.levelConfig.dumpIntervalRamp || this.gameStartTime === null) {
+      return this.levelConfig.dumpInterval;
+    }
+
+    const elapsedMs = this.scene.time.now - this.gameStartTime;
+    return calculateRampedValue(this.levelConfig.dumpIntervalRamp, elapsedMs);
+  }
+
+  /**
+   * Get the current dump amount accounting for difficulty ramping
+   */
+  private getRampedDumpAmount(): number | null {
+    if (!this.levelConfig.dumpAmountRamp || this.gameStartTime === null) {
+      return null; // No ramping, use random generation
+    }
+
+    const elapsedMs = this.scene.time.now - this.gameStartTime;
+    return calculateRampedValue(this.levelConfig.dumpAmountRamp, elapsedMs);
   }
 
   /**
@@ -46,21 +87,32 @@ export class BlockSpawner {
       return; // Already spawning
     }
 
+    // Record game start time for ramping calculations
+    if (this.gameStartTime === null) {
+      this.gameStartTime = this.scene.time.now;
+    }
+
+    // Get initial spawn rate (may be ramped if resuming)
+    const initialSpawnRate = this.getRampedSpawnRate();
+    this.spawnRate = initialSpawnRate;
+    this.baseSpawnRate = initialSpawnRate;
+    this.currentSpawnRate = initialSpawnRate;
+
     this.spawnTimer = this.scene.time.addEvent({
       delay: this.spawnRate,
-      callback: this.spawnBlock,
+      callback: this.onSpawnTick,
       callbackScope: this,
       loop: true,
     });
 
-    // Start dump timer (generates random shapes every 10 seconds)
+    // Start dump timer
     if (!this.dumpTimer) {
+      const initialDumpInterval = this.getRampedDumpInterval();
+      this.dumpInterval = initialDumpInterval;
+
       this.dumpTimer = this.scene.time.addEvent({
         delay: this.dumpInterval,
-        callback: () => {
-          const randomShape = DumpShapeGenerator.generateRandomShape();
-          this.scheduleDump(randomShape);
-        },
+        callback: this.onDumpTick,
         callbackScope: this,
         loop: true,
       });
@@ -88,6 +140,70 @@ export class BlockSpawner {
       this.warningTimer = null;
       this.scene.hideDumpWarning();
     }
+  }
+
+  /**
+   * Spawn timer tick - checks for rate changes and spawns block
+   */
+  private onSpawnTick(): void {
+    // Check if spawn rate has changed due to ramping
+    const newSpawnRate = this.getRampedSpawnRate();
+    if (newSpawnRate !== this.spawnRate) {
+      // Spawn rate has changed, need to recreate timer with new rate
+      this.spawnRate = newSpawnRate;
+      this.baseSpawnRate = newSpawnRate;
+
+      // Remove old timer
+      if (this.spawnTimer) {
+        const wasPaused = this.spawnTimer.paused;
+        this.spawnTimer.remove();
+
+        // Create new timer with updated rate
+        this.spawnTimer = this.scene.time.addEvent({
+          delay: this.spawnRate,
+          callback: this.onSpawnTick,
+          callbackScope: this,
+          loop: true,
+          paused: wasPaused,
+        });
+      }
+    }
+
+    // Spawn the block
+    this.spawnBlock();
+  }
+
+  /**
+   * Dump timer tick - checks for interval changes and triggers dump
+   */
+  private onDumpTick(): void {
+    // Check if dump interval has changed due to ramping
+    const newDumpInterval = this.getRampedDumpInterval();
+    if (newDumpInterval !== this.dumpInterval) {
+      // Dump interval has changed, need to recreate timer with new interval
+      this.dumpInterval = newDumpInterval;
+
+      // Remove old timer
+      if (this.dumpTimer) {
+        this.dumpTimer.remove();
+
+        // Create new timer with updated interval
+        this.dumpTimer = this.scene.time.addEvent({
+          delay: this.dumpInterval,
+          callback: this.onDumpTick,
+          callbackScope: this,
+          loop: true,
+        });
+      }
+    }
+
+    // Generate dump shape (with ramped amount if configured)
+    const dumpAmount = this.getRampedDumpAmount();
+    const dumpShape = dumpAmount !== null
+      ? DumpShapeGenerator.generateShapeWithTargetCount(dumpAmount)
+      : DumpShapeGenerator.generateRandomShape();
+
+    this.scheduleDump(dumpShape);
   }
 
   /**

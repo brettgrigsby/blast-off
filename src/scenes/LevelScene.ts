@@ -102,6 +102,9 @@ export class LevelScene extends Phaser.Scene {
     if (!this.columnManager) return
     if (this.isPaused) return
 
+    // Update difficulty ramping (gravity values)
+    this.columnManager.updateRampedValues(this.time.now)
+
     const blocksToRemove: Block[] = []
     const groupsToRemove: any[] = []
     let blocksPlaced = false
@@ -486,12 +489,7 @@ export class LevelScene extends Phaser.Scene {
     }
 
     // Initialize column system
-    this.columnManager = new ColumnManager(this, {
-      greyRecoveryDelay: this.levelConfig.greyRecoveryDelay,
-      maxDescentVelocity: this.levelConfig.maxDescentVelocity,
-      baseGravity: this.levelConfig.baseGravity,
-      massGravityFactor: this.levelConfig.massGravityFactor,
-    })
+    this.columnManager = new ColumnManager(this, this.levelConfig)
 
     // Create graphics for grid lines (debug visualization)
     this.gridLinesGraphics = this.add.graphics()
@@ -512,11 +510,12 @@ export class LevelScene extends Phaser.Scene {
     // ===== END TEMPORARY =====
 
     // Initialize and start block spawner (Iteration 2)
-    this.blockSpawner = new BlockSpawner(this, this.columnManager, {
-      spawnRate: this.levelConfig.spawnRate,
-      dumpInterval: this.levelConfig.dumpInterval,
-    })
+    this.blockSpawner = new BlockSpawner(this, this.columnManager, this.levelConfig)
     this.blockSpawner.start()
+
+    // Set game start time for difficulty ramping
+    const gameStartTime = this.time.now
+    this.columnManager.setGameStartTime(gameStartTime)
 
     // Initialize input manager (Iteration 3)
     // Note: Match checking is now handled continuously in the update loop

@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { Block, BlockColor } from '../objects/Block';
 import { BlockGroup } from '../objects/BlockGroup';
 import { Column } from './Column';
+import type { LevelConfig } from '../config/LevelConfig';
+import { calculateRampedValue } from '../config/LevelConfig';
 
 export class ColumnManager {
   private scene: Phaser.Scene;
@@ -30,22 +32,20 @@ export class ColumnManager {
   public maxDescentVelocity: number;
   public baseGravity: number;
   public massGravityFactor: number;
+  private levelConfig: LevelConfig;
+  private gameStartTime: number | null = null;
 
-  constructor(scene: Phaser.Scene, config?: {
-    greyRecoveryDelay?: number;
-    maxDescentVelocity?: number;
-    baseGravity?: number;
-    massGravityFactor?: number;
-  }) {
+  constructor(scene: Phaser.Scene, levelConfig: LevelConfig) {
     this.scene = scene;
     this.blocks = [];
     this.groups = [];
+    this.levelConfig = levelConfig;
 
-    // Set configuration with defaults
-    this.greyRecoveryDelay = config?.greyRecoveryDelay ?? 2000;
-    this.maxDescentVelocity = config?.maxDescentVelocity ?? 70;
-    this.baseGravity = config?.baseGravity ?? 150;
-    this.massGravityFactor = config?.massGravityFactor ?? 75;
+    // Set initial configuration
+    this.greyRecoveryDelay = levelConfig.greyRecoveryDelay;
+    this.maxDescentVelocity = levelConfig.maxDescentVelocity;
+    this.baseGravity = levelConfig.baseGravity;
+    this.massGravityFactor = levelConfig.massGravityFactor;
 
     // Initialize columns
     this.columns = [];
@@ -57,6 +57,38 @@ export class ColumnManager {
         gridHeight,
         ColumnManager.ROW_HEIGHT
       );
+    }
+  }
+
+  /**
+   * Set the game start time for ramping calculations
+   * Should be called when the game starts
+   */
+  public setGameStartTime(time: number): void {
+    if (this.gameStartTime === null) {
+      this.gameStartTime = time;
+    }
+  }
+
+  /**
+   * Update ramped gravity values based on elapsed time
+   * Should be called periodically (e.g., in scene update)
+   */
+  public updateRampedValues(currentTime: number): void {
+    if (this.gameStartTime === null) {
+      return;
+    }
+
+    const elapsedMs = currentTime - this.gameStartTime;
+
+    // Update base gravity if ramping is configured
+    if (this.levelConfig.baseGravityRamp) {
+      this.baseGravity = calculateRampedValue(this.levelConfig.baseGravityRamp, elapsedMs);
+    }
+
+    // Update mass gravity factor if ramping is configured
+    if (this.levelConfig.massGravityFactorRamp) {
+      this.massGravityFactor = calculateRampedValue(this.levelConfig.massGravityFactorRamp, elapsedMs);
     }
   }
 

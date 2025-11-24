@@ -13,7 +13,21 @@ export type LevelId = 'quick-play'
  * Each level can customize any aspect of the game mechanics
  */
 export const LEVEL_CONFIGS: Record<LevelId, LevelConfig> = {
-  'quick-play': DEFAULT_LEVEL_CONFIG,
+  'quick-play': {
+    ...DEFAULT_LEVEL_CONFIG,
+    spawnRateRamp: {
+      initialValue: 1000,
+      changePerInterval: -200, // Decrease interval by 200ms for faster spawning
+      intervalDuration: 60000, // Every minute
+      minValue: 200, // Don't go below 200ms
+    },
+    dumpAmountRamp: {
+      initialValue: 20,
+      changePerInterval: 5, // Add 5 more blocks each interval
+      intervalDuration: 60000, // Every minute
+      maxValue: 100, // Cap at 100 blocks per dump
+    },
+  },
   // Future story levels will be added here, e.g.:
   // 'story-1': {
   //   ...DEFAULT_LEVEL_CONFIG,
