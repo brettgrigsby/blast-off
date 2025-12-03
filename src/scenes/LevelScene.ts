@@ -48,6 +48,8 @@ export class LevelScene extends Phaser.Scene {
   private saveButton!: Phaser.GameObjects.Container
   private abandonButton!: Phaser.GameObjects.Container
   private resumeButton!: Phaser.GameObjects.Container
+  private saveGameEnabled: boolean = false
+  private saveUnlockText!: Phaser.GameObjects.Text
 
   // LFG button state
   private lfgButton!: Phaser.GameObjects.Container
@@ -634,13 +636,30 @@ export class LevelScene extends Phaser.Scene {
       .setVisible(false)
       .setInteractive() // Make interactive to block clicks to game below
 
-    // Save Game button with border
+    // "Unlock 10 Credits" text above Save Game button
+    this.saveUnlockText = this.add.text(
+      GameSettings.canvas.width / 2,
+      GameSettings.canvas.height / 2 - 160,
+      'Unlock 10 Credits',
+      {
+        fontSize: '24px',
+        color: '#aaaaaa',
+        fontFamily: 'Arial',
+      }
+    )
+      .setOrigin(0.5)
+      .setDepth(2001)
+      .setVisible(false)
+
+    // Save Game button with border (grayed out when disabled)
+    const saveButtonColor = this.saveGameEnabled ? 0xffffff : 0x666666
+    const saveButtonTextColor = this.saveGameEnabled ? '#ffffff' : '#666666'
     const saveButtonBg = this.add.graphics()
-      .lineStyle(1, 0xffffff, 1)
+      .lineStyle(1, saveButtonColor, 1)
       .strokeRoundedRect(-160, -40, 320, 80, 10)
     const saveButtonText = this.add.text(0, 0, 'Save Game', {
       fontSize: '40px',
-      color: '#ffffff',
+      color: saveButtonTextColor,
       fontFamily: 'Arial',
       fontStyle: 'bold',
     }).setOrigin(0.5)
@@ -1200,6 +1219,7 @@ export class LevelScene extends Phaser.Scene {
     // Show pause menu
     this.pauseOverlay.setVisible(true)
     this.saveButton.setVisible(true)
+    this.saveUnlockText.setVisible(!this.saveGameEnabled)
     this.abandonButton.setVisible(true)
     this.resumeButton.setVisible(true)
     this.pauseButton.setVisible(false)
@@ -1231,6 +1251,7 @@ export class LevelScene extends Phaser.Scene {
     // Hide pause menu
     this.pauseOverlay.setVisible(false)
     this.saveButton.setVisible(false)
+    this.saveUnlockText.setVisible(false)
     this.abandonButton.setVisible(false)
     this.resumeButton.setVisible(false)
     this.pauseButton.setVisible(true)
@@ -1371,6 +1392,22 @@ export class LevelScene extends Phaser.Scene {
    * Save game using GlobalGameState
    */
   private async saveGame(): Promise<void> {
+    if (!this.saveGameEnabled) {
+      await window.FarcadeSDK.purchase({ item: 'save-game' })
+      if (window.FarcadeSDK.hasItem('save-game')) {
+        this.saveGameEnabled = true
+        // Update button to enabled state
+        const buttonBg = this.saveButton.getAt(0) as Phaser.GameObjects.Graphics
+        buttonBg.clear()
+        buttonBg.lineStyle(1, 0xffffff, 1)
+        buttonBg.strokeRoundedRect(-160, -40, 320, 80, 10)
+        const buttonText = this.saveButton.getAt(1) as Phaser.GameObjects.Text
+        buttonText.setColor('#ffffff')
+        this.saveUnlockText.setVisible(false)
+      }
+      return
+    }
+
     try {
       const gameState = GameStateManager.serialize(
         this.columnManager,
@@ -1597,8 +1634,8 @@ export class LevelScene extends Phaser.Scene {
 
     // Verify no matches exist (safety check)
     const initialMatches = this.matchDetector.detectMatches()
-    if (initialMatches.length > 0) {
-      console.warn(`Warning: ${initialMatches.length} blocks in initial matches detected!`)
+    if (initialMatches.blocks.length > 0) {
+      console.warn(`Warning: ${initialMatches.blocks.length} blocks in initial matches detected!`)
     }
   }
 }
