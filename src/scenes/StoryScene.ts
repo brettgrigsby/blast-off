@@ -16,6 +16,10 @@ export class StoryScene extends Phaser.Scene {
       'heavyBlocksBg',
       'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/jupiter-fUQVcpNrp8mYY5q0LSeA90hHqJDMll.webp?KhFK'
     )
+    this.load.image(
+      'theBeltBg',
+      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/the-belt-OSbKtxSOBTeRn8WPZvn5puJue962Gg.webp?wd1w'
+    )
   }
 
   create(): void {
@@ -146,6 +150,72 @@ export class StoryScene extends Phaser.Scene {
           useHandCursor: true,
         })
         .on('pointerdown', () => this.startLevel('heavy-blocks'))
+    }
+
+    // Create THE BELT button
+    const isTheBeltUnlocked = heavyBlocksHighScore > 0
+    const theBeltImage = this.add.image(0, 0, 'theBeltBg')
+      .setDisplaySize(buttonWidth, buttonHeight)
+    if (!isTheBeltUnlocked) {
+      theBeltImage.setTint(0x666666)
+    }
+    const theBeltBorder = this.add.graphics()
+      .lineStyle(3, isTheBeltUnlocked ? 0xffffff : 0x666666, 1)
+      .strokeRoundedRect(-buttonWidth / 2, -buttonHeight / 2, buttonWidth, buttonHeight, 15)
+    const theBeltText = this.add.text(
+      -buttonWidth / 2 + 20,
+      -buttonHeight / 2 + 20,
+      'THE BELT',
+      {
+        fontSize: '48px',
+        color: isTheBeltUnlocked ? '#ffffff' : '#666666',
+        fontFamily: 'Arial',
+        fontStyle: 'bold',
+        shadow: {
+          offsetX: 2,
+          offsetY: 2,
+          color: '#000000',
+          blur: 4,
+          fill: true,
+        },
+      }
+    ).setOrigin(0, 0)
+    const theBeltHighScore = GlobalGameState.getInstance().getHighScore('the-belt')
+    const theBeltContainerChildren: Phaser.GameObjects.GameObject[] = [theBeltImage, theBeltBorder, theBeltText]
+    if (theBeltHighScore > 0) {
+      const theBeltHighScoreText = this.add.text(
+        -buttonWidth / 2 + 20,
+        buttonHeight / 2 - 20,
+        `Best: ${theBeltHighScore}`,
+        {
+          fontSize: '32px',
+          color: '#ffffff',
+          fontFamily: 'Arial',
+          fontStyle: 'bold',
+          shadow: {
+            offsetX: 2,
+            offsetY: 2,
+            color: '#000000',
+            blur: 4,
+            fill: true,
+          },
+        }
+      ).setOrigin(0, 1)
+      theBeltContainerChildren.push(theBeltHighScoreText)
+    }
+    const theBeltContainer = this.add.container(
+      GameSettings.canvas.width / 2,
+      buttonHeight / 2 + 100 + (buttonHeight + buttonGap) * 2,
+      theBeltContainerChildren
+    )
+    if (isTheBeltUnlocked) {
+      theBeltContainer
+        .setInteractive({
+          hitArea: new Phaser.Geom.Rectangle(-buttonWidth / 2, -buttonHeight / 2, buttonWidth, buttonHeight),
+          hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+          useHandCursor: true,
+        })
+        .on('pointerdown', () => this.startLevel('the-belt'))
     }
 
     // Create back chevron (rendered last to be on top)

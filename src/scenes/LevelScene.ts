@@ -451,7 +451,7 @@ export class LevelScene extends Phaser.Scene {
     // Set up SDK event listeners
     window.FarcadeSDK.on('play_again', () => {
       console.log('play_again event received')
-      this.scene.restart()
+      this.scene.start('TitleScene')
     })
 
     window.FarcadeSDK.on('purchase_complete', () => {
