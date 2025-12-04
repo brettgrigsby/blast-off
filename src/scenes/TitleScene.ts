@@ -12,6 +12,9 @@ declare global {
 
 export class TitleScene extends Phaser.Scene {
   private loadingText!: Phaser.GameObjects.Text
+  private storyModeEnabled: boolean = false
+  private storyButton!: Phaser.GameObjects.Container
+  private storyUnlockText!: Phaser.GameObjects.Text
 
   constructor() {
     super({ key: 'TitleScene' })
@@ -161,21 +164,24 @@ export class TitleScene extends Phaser.Scene {
       })
       .on('pointerdown', () => this.startGame())
 
-    // Create STORY MODE button
-    // TODO: Uncomment when ready to enable story mode
-    /*
+    // Check if story mode is unlocked
+    this.storyModeEnabled = window.FarcadeSDK?.hasItem?.('story-mode') ?? false
+
+    // Create STORY MODE button (styled based on enabled state)
+    const storyButtonColor = this.storyModeEnabled ? 0xffffff : 0x666666
+    const storyButtonTextColor = this.storyModeEnabled ? '#ffffff' : '#666666'
     const storyButtonBg = this.add.graphics()
       .fillStyle(0x000000, 0.85)
       .fillRoundedRect(-200, -50, 400, 100, 15)
-      .lineStyle(3, 0xffffff, 1)
+      .lineStyle(3, storyButtonColor, 1)
       .strokeRoundedRect(-200, -50, 400, 100, 15)
     const storyButtonText = this.add.text(0, 0, 'STORY MODE', {
       fontSize: '48px',
-      color: '#ffffff',
+      color: storyButtonTextColor,
       fontFamily: 'Arial',
       fontStyle: 'bold',
     }).setOrigin(0.5)
-    const storyButton = this.add.container(
+    this.storyButton = this.add.container(
       GameSettings.canvas.width / 2,
       GameSettings.canvas.height / 2 + 150,
       [storyButtonBg, storyButtonText]
@@ -186,7 +192,45 @@ export class TitleScene extends Phaser.Scene {
         useHandCursor: true,
       })
       .on('pointerdown', () => this.startStoryMode())
-    */
+
+    // "Unlock 100 Credits" text below Story Mode button (with background)
+    const unlockTextBg = this.add.graphics()
+      .fillStyle(0x000000, 0.85)
+      .fillRoundedRect(-120, -18, 240, 36, 8)
+    this.storyUnlockText = this.add.text(0, 0, 'Unlock 100 Credits', {
+      fontSize: '24px',
+      color: '#aaaaaa',
+      fontFamily: 'Arial',
+    }).setOrigin(0.5)
+    const unlockTextContainer = this.add.container(
+      GameSettings.canvas.width / 2,
+      GameSettings.canvas.height / 2 + 220,
+      [unlockTextBg, this.storyUnlockText]
+    ).setVisible(!this.storyModeEnabled)
+
+    // Store reference for visibility toggling
+    this.storyUnlockText = unlockTextContainer as any
+
+    // Listen for purchase completion
+    if (window.FarcadeSDK) {
+      window.FarcadeSDK.on('purchase_complete', () => {
+        const hasItem = window.FarcadeSDK.hasItem
+        this.storyModeEnabled = hasItem?.('story-mode') ?? false
+
+        if (this.storyModeEnabled) {
+          // Update button to enabled state
+          const buttonBg = this.storyButton.getAt(0) as Phaser.GameObjects.Graphics
+          buttonBg.clear()
+          buttonBg.fillStyle(0x000000, 0.85)
+          buttonBg.fillRoundedRect(-200, -50, 400, 100, 15)
+          buttonBg.lineStyle(3, 0xffffff, 1)
+          buttonBg.strokeRoundedRect(-200, -50, 400, 100, 15)
+          const buttonText = this.storyButton.getAt(1) as Phaser.GameObjects.Text
+          buttonText.setColor('#ffffff')
+          this.storyUnlockText.setVisible(false)
+        }
+      })
+    }
   }
 
   private startGame(): void {
@@ -203,8 +247,28 @@ export class TitleScene extends Phaser.Scene {
     })
   }
 
-  private startStoryMode(): void {
-    // TODO: Implement story mode
-    console.log('Story mode not yet implemented')
+  private async startStoryMode(): Promise<void> {
+    if (!this.storyModeEnabled) {
+      if (window.FarcadeSDK) {
+        await window.FarcadeSDK.purchase({ item: 'story-mode' })
+        if (window.FarcadeSDK.hasItem?.('story-mode')) {
+          this.storyModeEnabled = true
+          // Update button to enabled state
+          const buttonBg = this.storyButton.getAt(0) as Phaser.GameObjects.Graphics
+          buttonBg.clear()
+          buttonBg.fillStyle(0x000000, 0.85)
+          buttonBg.fillRoundedRect(-200, -50, 400, 100, 15)
+          buttonBg.lineStyle(3, 0xffffff, 1)
+          buttonBg.strokeRoundedRect(-200, -50, 400, 100, 15)
+          const buttonText = this.storyButton.getAt(1) as Phaser.GameObjects.Text
+          buttonText.setColor('#ffffff')
+          this.storyUnlockText.setVisible(false)
+        }
+      }
+      return
+    }
+
+    this.scene.stop('LevelScene')
+    this.scene.start('StoryScene')
   }
 }

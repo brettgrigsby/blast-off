@@ -32,7 +32,8 @@ export interface GameState {
   currentLevel: {
     levelId: string
     boardState: SaveState
-  }
+  } | null
+  highScores?: { [levelId: string]: number }
 }
 
 export class GameStateManager {

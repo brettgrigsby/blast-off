@@ -2,11 +2,8 @@ import { LevelConfig, DEFAULT_LEVEL_CONFIG } from './LevelConfig'
 
 /**
  * Level identifiers for the game
- * Add new story mode level IDs here as they are created
  */
-export type LevelId = 'quick-play'
-// Future story levels will be added here, e.g.:
-// | 'story-1' | 'story-2' | 'story-3' | ...
+export type LevelId = 'quick-play' | 'speed-rush' | 'heavy-blocks'
 
 /**
  * Map of level IDs to their configuration
@@ -14,11 +11,17 @@ export type LevelId = 'quick-play'
  */
 export const LEVEL_CONFIGS: Record<LevelId, LevelConfig> = {
   'quick-play': DEFAULT_LEVEL_CONFIG,
-  // Future story levels will be added here, e.g.:
-  // 'story-1': {
-  //   ...DEFAULT_LEVEL_CONFIG,
-  //   spawnRate: 1200, // Slower spawn rate for first level
-  // },
+  'speed-rush': {
+    ...DEFAULT_LEVEL_CONFIG,
+    spawnRate: 500,
+    blockCountGoal: 300,
+  },
+  'heavy-blocks': {
+    ...DEFAULT_LEVEL_CONFIG,
+    baseGravity: 300,
+    massGravityFactor: 150,
+    blockCountGoal: 300,
+  },
 }
 
 /**

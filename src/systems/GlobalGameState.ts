@@ -80,11 +80,48 @@ export class GlobalGameState {
 
   /**
    * Clear the game state (set currentLevel to null) and persist to SDK
-   * Used when abandoning a game
+   * Preserves high scores when clearing
+   * Used when abandoning a game or completing a level
    */
   clearGameState(): void {
-    const emptyGameState: GameState = { currentLevel: null }
-    this.updateGameState(emptyGameState)
-    console.log('Game state cleared')
+    const preservedHighScores = this.gameState?.highScores
+    const clearedState: GameState = {
+      currentLevel: null,
+      highScores: preservedHighScores
+    }
+    this.updateGameState(clearedState)
+    console.log('Game state cleared (high scores preserved)')
+  }
+
+  /**
+   * Update high score for a level if the new score is higher
+   * @param levelId The level ID
+   * @param score The new score to compare
+   * @returns true if the high score was updated
+   */
+  updateHighScore(levelId: string, score: number): boolean {
+    const currentHighScore = this.gameState?.highScores?.[levelId] ?? 0
+
+    if (score > currentHighScore) {
+      const newHighScores = { ...this.gameState?.highScores, [levelId]: score }
+
+      const updatedState: GameState = {
+        currentLevel: this.gameState?.currentLevel ?? null,
+        highScores: newHighScores
+      }
+
+      this.updateGameState(updatedState)
+      return true
+    }
+    return false
+  }
+
+  /**
+   * Get high score for a level
+   * @param levelId The level ID
+   * @returns The high score, or 0 if none exists
+   */
+  getHighScore(levelId: string): number {
+    return this.gameState?.highScores?.[levelId] ?? 0
   }
 }

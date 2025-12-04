@@ -48,7 +48,7 @@ export class LevelScene extends Phaser.Scene {
   private saveButton!: Phaser.GameObjects.Container
   private abandonButton!: Phaser.GameObjects.Container
   private resumeButton!: Phaser.GameObjects.Container
-  private saveGameEnabled: boolean = false
+  private saveGameEnabled: boolean = window.FarcadeSDK.hasItem && window.FarcadeSDK.hasItem('save-game')
   private saveUnlockText!: Phaser.GameObjects.Text
 
   // LFG button state
@@ -423,8 +423,11 @@ export class LevelScene extends Phaser.Scene {
         // Calculate interpolation factor (clamped to 0-1)
         const t = Math.min(elapsedTime / rampDuration, 1)
 
-        // Linear interpolation from base rate to target rate
-        const newRate = baseRate + (targetRate - baseRate) * t
+        // Apply ease-out: starts fast, slows at end (quadratic ease-out)
+        const tEased = 1 - Math.pow(1 - t, 2)
+
+        // Interpolate from base rate to target rate with easing
+        const newRate = baseRate + (targetRate - baseRate) * tEased
 
         // Update LFG spawning with the new rate
         this.blockSpawner.updateLFGSpawning(newRate)
@@ -449,6 +452,21 @@ export class LevelScene extends Phaser.Scene {
     window.FarcadeSDK.on('play_again', () => {
       console.log('play_again event received')
       this.scene.restart()
+    })
+
+    window.FarcadeSDK.on('purchase_complete', () => {
+      const hasItem = window.FarcadeSDK.hasItem
+      this.saveGameEnabled = hasItem && hasItem('save-game')
+
+      if (this.saveGameEnabled) {
+        const buttonBg = this.saveButton.getAt(0) as Phaser.GameObjects.Graphics
+        buttonBg.clear()
+        buttonBg.lineStyle(1, 0xffffff, 1)
+        buttonBg.strokeRoundedRect(-160, -40, 320, 80, 10)
+        const buttonText = this.saveButton.getAt(1) as Phaser.GameObjects.Text
+        buttonText.setColor('#ffffff')
+        this.saveUnlockText.setVisible(false)
+      }
     })
 
     console.log('Registering toggle_mute listener')
@@ -1088,8 +1106,14 @@ export class LevelScene extends Phaser.Scene {
     }
     this.loseConditionTimers.clear()
 
-    // Clear the global game state (level complete)
+    // Save high score if it's a new record
     const globalGameState = GlobalGameState.getInstance()
+    const isNewHighScore = globalGameState.updateHighScore(this.currentLevelId, score)
+    if (isNewHighScore) {
+      console.log(`New high score for ${this.currentLevelId}: ${score}`)
+    }
+
+    // Clear the global game state (level complete, but high scores preserved)
     globalGameState.clearGameState()
 
     // Call SDK gameOver with the calculated score
@@ -1283,7 +1307,6 @@ export class LevelScene extends Phaser.Scene {
     // Don't activate if a dump is active
     if (this.blockSpawner.isDumpActive()) return
 
-    console.log('LFG mode activated')
     this.isLFGActive = true
     this.lfgStartTime = this.time.now
 
