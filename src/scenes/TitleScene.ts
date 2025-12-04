@@ -165,7 +165,7 @@ export class TitleScene extends Phaser.Scene {
       .on('pointerdown', () => this.startGame())
 
     // Check if story mode is unlocked
-    this.storyModeEnabled = window.FarcadeSDK?.hasItem?.('story-mode') ?? false
+    this.storyModeEnabled = window.FarcadeSDK?.hasItem?.('story-mode') ?? true
 
     // Create STORY MODE button (styled based on enabled state)
     const storyButtonColor = this.storyModeEnabled ? 0xffffff : 0x666666
