@@ -1442,8 +1442,14 @@ export class LevelScene extends Phaser.Scene {
       )
 
       // Update global state (this will save to SDK as a side effect)
+      // Preserve existing high scores when saving game state
       const globalGameState = GlobalGameState.getInstance()
-      globalGameState.updateGameState(gameState)
+      const existingHighScores = globalGameState.getGameState()?.highScores
+      const gameStateWithHighScores = {
+        ...gameState,
+        highScores: existingHighScores
+      }
+      globalGameState.updateGameState(gameStateWithHighScores)
 
       // Track that we have a saved game locally for game over screen
       this.hasSavedGame = true
