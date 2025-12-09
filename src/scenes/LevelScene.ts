@@ -48,7 +48,7 @@ export class LevelScene extends Phaser.Scene {
   private saveButton!: Phaser.GameObjects.Container
   private abandonButton!: Phaser.GameObjects.Container
   private resumeButton!: Phaser.GameObjects.Container
-  private saveGameEnabled: boolean = window.FarcadeSDK.hasItem && window.FarcadeSDK.hasItem('save-game')
+  private saveGameEnabled: boolean = false
   private saveUnlockText!: Phaser.GameObjects.Text
 
   // LFG button state
@@ -97,6 +97,8 @@ export class LevelScene extends Phaser.Scene {
 
     // Merge provided config with defaults
     this.levelConfig = mergeLevelConfig(data?.levelConfig)
+
+    this.saveGameEnabled = window.FarcadeSDK.hasItem && window.FarcadeSDK.hasItem('save-game')
 
     this.initializeSDK()
   }
