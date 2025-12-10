@@ -13,7 +13,7 @@ export const LEVEL_CONFIGS: Record<LevelId, LevelConfig> = {
   'quick-play': DEFAULT_LEVEL_CONFIG,
   'speed-rush': {
     ...DEFAULT_LEVEL_CONFIG,
-    spawnRate: 500,
+    spawnRate: 300,
     blockCountGoal: 800,
   },
   'heavy-blocks': {

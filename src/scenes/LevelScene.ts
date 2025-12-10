@@ -77,6 +77,9 @@ export class LevelScene extends Phaser.Scene {
   private hasSavedGame: boolean = false
   private savedGameState: GameState | null = null
 
+  // Haptic feedback callback for block landing
+  private hapticCallback: (() => void) | null = null
+
   constructor() {
     super({ key: 'LevelScene' })
   }
@@ -208,6 +211,9 @@ export class LevelScene extends Phaser.Scene {
           if (collision.collided) {
             this.columnManager.placeBlock(block, collision.restColumn, collision.restY)
             blocksPlaced = true
+            if (this.hapticCallback) {
+              this.hapticCallback()
+            }
           } else {
             // Block hasn't collided yet, let it fall independently
             block.setVelocity(block.velocityY)
@@ -276,6 +282,9 @@ export class LevelScene extends Phaser.Scene {
         // Place the block at rest position (using Y position)
         this.columnManager.placeBlock(block, collision.restColumn, collision.restY)
         blocksPlaced = true
+        if (this.hapticCallback) {
+          this.hapticCallback()
+        }
       }
     }
 
@@ -573,6 +582,13 @@ export class LevelScene extends Phaser.Scene {
       dumpInterval: this.levelConfig.dumpInterval,
     })
     this.blockSpawner.start()
+
+    // Initialize haptic feedback callback for block landing
+    this.hapticCallback = () => {
+      if (window.FarcadeSDK) {
+        window.FarcadeSDK.hapticFeedback()
+      }
+    }
 
     // Initialize input manager (Iteration 3)
     // Note: Match checking is now handled continuously in the update loop
@@ -1354,17 +1370,6 @@ export class LevelScene extends Phaser.Scene {
 
     // Enable LFG mode in BlockSpawner
     this.blockSpawner.enableLFGMode()
-
-    // Set haptic feedback callback
-    this.blockSpawner.setHapticCallback(() => {
-      if (window.FarcadeSDK) {
-        if (this.isMultiplayer) {
-          window.FarcadeSDK.multiplayer.actions.hapticFeedback()
-        } else {
-          window.FarcadeSDK.singlePlayer.actions.hapticFeedback()
-        }
-      }
-    })
   }
 
   /**

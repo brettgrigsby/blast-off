@@ -10,8 +10,8 @@ export class BlockSpawner {
   private spawnTimer: Phaser.Time.TimerEvent | null = null;
 
   // Block dump configuration (static - not level-configurable)
-  private static readonly WARNING_DURATION = 3000; // milliseconds (3 seconds warning)
-  private static readonly RESUME_DELAY = 3000; // milliseconds (3 seconds delay before resuming regular spawning after dump)
+  private static readonly WARNING_DURATION = 2000; // milliseconds (3 seconds warning)
+  private static readonly RESUME_DELAY = 2000; // milliseconds (3 seconds delay before resuming regular spawning after dump)
   private dumpTimer: Phaser.Time.TimerEvent | null = null;
   private warningTimer: Phaser.Time.TimerEvent | null = null;
   private pendingDumpShape: DumpShape | null = null;
@@ -24,7 +24,6 @@ export class BlockSpawner {
   private isLFGMode: boolean = false;
   private baseSpawnRate: number;
   private currentSpawnRate: number;
-  private hapticCallback: (() => void) | null = null;
   private lastLFGSpawnTime: number = 0;
 
   constructor(scene: LevelScene, columnManager: ColumnManager, config?: { spawnRate?: number; dumpInterval?: number }) {
@@ -107,10 +106,6 @@ export class BlockSpawner {
     // addBlock handles everything - creation, velocity, and tracking
     this.columnManager.addBlock(column, spawnY, color, 1000);
 
-    // Call haptic feedback if in LFG mode
-    if (this.isLFGMode && this.hapticCallback) {
-      this.hapticCallback();
-    }
   }
 
   /**
@@ -197,13 +192,6 @@ export class BlockSpawner {
    */
   public destroy(): void {
     this.stop();
-  }
-
-  /**
-   * Set the haptic feedback callback for LFG mode
-   */
-  public setHapticCallback(callback: () => void): void {
-    this.hapticCallback = callback;
   }
 
   /**
