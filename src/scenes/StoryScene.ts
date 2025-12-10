@@ -219,14 +219,21 @@ export class StoryScene extends Phaser.Scene {
     }
 
     // Create back chevron (rendered last to be on top)
-    this.add.text(20, 5, '‹', {
+    const backChevron = this.add.text(20, 5, '‹', {
       fontSize: '80px',
       color: '#ffffff',
       fontFamily: 'Arial',
       fontStyle: 'bold',
     })
       .setOrigin(0, 0)
-      .setInteractive({ useHandCursor: true })
+    // Make hit area 200% wider than the visual text
+    const chevronBounds = backChevron.getBounds()
+    backChevron
+      .setInteractive({
+        hitArea: new Phaser.Geom.Rectangle(0, 0, chevronBounds.width * 3, chevronBounds.height),
+        hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+        useHandCursor: true
+      })
       .on('pointerdown', () => this.scene.start('TitleScene'))
   }
 

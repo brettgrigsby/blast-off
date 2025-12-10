@@ -619,21 +619,23 @@ export class LevelScene extends Phaser.Scene {
     // Rectangles: centered at their positions, spans x:0-16 and x:24-40, y:-20 to 20
     const pauseRect1 = this.add.rectangle(8, 0, 16, 40, 0xffffff)
     const pauseRect2 = this.add.rectangle(32, 0, 16, 40, 0xffffff)
+    // Make hit area twice as wide as visual (80px) and full height of bottom section
+    const gridBottom = ColumnManager.GRID_OFFSET_Y + (ColumnManager.ROWS * ColumnManager.ROW_HEIGHT)
+    const pauseButtonHeight = GameSettings.canvas.height - gridBottom
     this.pauseButton = this.add.container(
       GameSettings.canvas.width - 60,
-      GameSettings.canvas.height - 50,
+      GameSettings.canvas.height - (pauseButtonHeight / 2),
       [pauseRect1, pauseRect2]
     )
       .setDepth(1000)
       .setInteractive({
-        hitArea: new Phaser.Geom.Rectangle(0, -20, 40, 40),
+        hitArea: new Phaser.Geom.Rectangle(-20, -pauseButtonHeight / 2, 80, pauseButtonHeight),
         hitAreaCallback: Phaser.Geom.Rectangle.Contains,
         useHandCursor: true
       })
       .on('pointerdown', () => this.pauseGame())
 
     // Add LFG button at bottom middle (full height of bottom section: 90px)
-    const gridBottom = ColumnManager.GRID_OFFSET_Y + (ColumnManager.ROWS * ColumnManager.ROW_HEIGHT)
     const bottomSectionHeight = GameSettings.canvas.height - gridBottom
     const buttonCenterY = gridBottom + (bottomSectionHeight / 2)
     const buttonHalfHeight = bottomSectionHeight / 2
