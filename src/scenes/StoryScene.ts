@@ -62,7 +62,7 @@ export class StoryScene extends Phaser.Scene {
     const speedRushText = this.add.text(
       -buttonWidth / 2 + 20,
       -buttonHeight / 2 + 20,
-      "Grumby's\nComet",
+      "GRUMBY'S\nCOMET",
       {
         fontSize: '48px',
         color: '#ffffff',
