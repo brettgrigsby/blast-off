@@ -253,7 +253,7 @@ export class StoryScene extends Phaser.Scene {
       .fillCircle(backButtonX, backButtonY, backButtonRadius)
       .lineStyle(2, 0xffffff, 1)
       .strokeCircle(backButtonX, backButtonY, backButtonRadius)
-    const backChevron = this.add.text(backButtonX - 2, backButtonY - 4, '‹', {
+    const backChevron = this.add.text(backButtonX - 2, backButtonY - 5, '‹', {
       fontSize: '60px',
       color: '#ffffff',
       fontFamily: 'Arial',
