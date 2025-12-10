@@ -3,6 +3,23 @@ import { getLevelConfig, LevelId } from '../config/LevelMap'
 import { GlobalGameState } from '../systems/GlobalGameState'
 
 export class StoryScene extends Phaser.Scene {
+  // Scroll state
+  private scrollContainer: Phaser.GameObjects.Container | null = null
+  private scrollY: number = 0
+  private dragStartY: number = 0
+  private dragStartScrollY: number = 0
+  private isDragging: boolean = false
+  private isPointerDown: boolean = false
+  private pointerStartY: number = 0
+  private readonly DRAG_THRESHOLD = 10 // pixels before treated as drag
+
+  // Button hit areas for tap detection
+  private levelButtons: Array<{
+    container: Phaser.GameObjects.Container
+    levelId: LevelId
+    isUnlocked: boolean
+  }> = []
+
   constructor() {
     super({ key: 'StoryScene' })
   }
@@ -26,6 +43,15 @@ export class StoryScene extends Phaser.Scene {
     const buttonWidth = 680
     const buttonHeight = 300
     const buttonGap = 40
+
+    // Reset scroll state
+    this.levelButtons = []
+    this.scrollY = 0
+    this.isDragging = false
+
+    // Create scroll container to hold all level buttons
+    // Buttons are positioned relative to this container (y=0 is first button center)
+    this.scrollContainer = this.add.container(0, 0)
 
     // Create ACCELIX button
     const speedRushImage = this.add.image(0, 0, 'speedRushBg')
@@ -74,17 +100,17 @@ export class StoryScene extends Phaser.Scene {
       ).setOrigin(0, 1)
       speedRushContainerChildren.push(speedRushHighScoreText)
     }
-    this.add.container(
+    const speedRushContainer = this.add.container(
       GameSettings.canvas.width / 2,
       buttonHeight / 2 + 100,
       speedRushContainerChildren
     )
-      .setInteractive({
-        hitArea: new Phaser.Geom.Rectangle(-buttonWidth / 2, -buttonHeight / 2, buttonWidth, buttonHeight),
-        hitAreaCallback: Phaser.Geom.Rectangle.Contains,
-        useHandCursor: true,
-      })
-      .on('pointerdown', () => this.startLevel('speed-rush'))
+    this.scrollContainer.add(speedRushContainer)
+    this.levelButtons.push({
+      container: speedRushContainer,
+      levelId: 'speed-rush',
+      isUnlocked: true
+    })
 
     // Create HEAVY BLOCKS button
     const isHeavyBlocksUnlocked = speedRushHighScore > 0
@@ -142,15 +168,12 @@ export class StoryScene extends Phaser.Scene {
       buttonHeight / 2 + 100 + buttonHeight + buttonGap,
       heavyBlocksContainerChildren
     )
-    if (isHeavyBlocksUnlocked) {
-      heavyBlocksContainer
-        .setInteractive({
-          hitArea: new Phaser.Geom.Rectangle(-buttonWidth / 2, -buttonHeight / 2, buttonWidth, buttonHeight),
-          hitAreaCallback: Phaser.Geom.Rectangle.Contains,
-          useHandCursor: true,
-        })
-        .on('pointerdown', () => this.startLevel('heavy-blocks'))
-    }
+    this.scrollContainer.add(heavyBlocksContainer)
+    this.levelButtons.push({
+      container: heavyBlocksContainer,
+      levelId: 'heavy-blocks',
+      isUnlocked: isHeavyBlocksUnlocked
+    })
 
     // Create THE BELT button
     const isTheBeltUnlocked = heavyBlocksHighScore > 0
@@ -208,30 +231,39 @@ export class StoryScene extends Phaser.Scene {
       buttonHeight / 2 + 100 + (buttonHeight + buttonGap) * 2,
       theBeltContainerChildren
     )
-    if (isTheBeltUnlocked) {
-      theBeltContainer
-        .setInteractive({
-          hitArea: new Phaser.Geom.Rectangle(-buttonWidth / 2, -buttonHeight / 2, buttonWidth, buttonHeight),
-          hitAreaCallback: Phaser.Geom.Rectangle.Contains,
-          useHandCursor: true,
-        })
-        .on('pointerdown', () => this.startLevel('the-belt'))
-    }
+    this.scrollContainer.add(theBeltContainer)
+    this.levelButtons.push({
+      container: theBeltContainer,
+      levelId: 'the-belt',
+      isUnlocked: isTheBeltUnlocked
+    })
 
-    // Create back chevron (rendered last to be on top)
-    const backChevron = this.add.text(20, 5, '‹', {
-      fontSize: '80px',
+    // Set up scroll input handlers
+    this.input.on('pointerdown', this.handlePointerDown, this)
+    this.input.on('pointermove', this.handlePointerMove, this)
+    this.input.on('pointerup', this.handlePointerUp, this)
+
+    // Create back button with circle background (rendered last to be on top, outside scroll container)
+    const backButtonRadius = 25
+    const backButtonX = 45
+    const backButtonY = 45
+    const backCircle = this.add.graphics()
+      .fillStyle(0x000000, 1)
+      .fillCircle(backButtonX, backButtonY, backButtonRadius)
+      .lineStyle(2, 0xffffff, 1)
+      .strokeCircle(backButtonX, backButtonY, backButtonRadius)
+    const backChevron = this.add.text(backButtonX - 2, backButtonY - 4, '‹', {
+      fontSize: '60px',
       color: '#ffffff',
       fontFamily: 'Arial',
       fontStyle: 'bold',
     })
-      .setOrigin(0, 0)
-    // Make hit area 200% wider than the visual text
-    const chevronBounds = backChevron.getBounds()
-    backChevron
+      .setOrigin(0.5, 0.5)
+    // Create container for back button to handle input
+    const backButtonContainer = this.add.container(0, 0, [backCircle, backChevron])
       .setInteractive({
-        hitArea: new Phaser.Geom.Rectangle(0, 0, chevronBounds.width * 3, chevronBounds.height),
-        hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+        hitArea: new Phaser.Geom.Circle(backButtonX, backButtonY, backButtonRadius),
+        hitAreaCallback: Phaser.Geom.Circle.Contains,
         useHandCursor: true
       })
       .on('pointerdown', () => this.scene.start('TitleScene'))
@@ -243,5 +275,78 @@ export class StoryScene extends Phaser.Scene {
       levelConfig,
       levelId
     })
+  }
+
+  private handlePointerDown(pointer: Phaser.Input.Pointer): void {
+    this.isPointerDown = true
+    this.pointerStartY = pointer.y
+    this.dragStartY = pointer.y
+    this.dragStartScrollY = this.scrollY
+    this.isDragging = false
+  }
+
+  private handlePointerMove(pointer: Phaser.Input.Pointer): void {
+    if (!this.isPointerDown) return
+
+    const dragDistance = Math.abs(pointer.y - this.pointerStartY)
+
+    // Check if we've exceeded the drag threshold
+    if (dragDistance > this.DRAG_THRESHOLD) {
+      this.isDragging = true
+    }
+
+    if (this.isDragging && this.scrollContainer) {
+      // Calculate new scroll position
+      const deltaY = pointer.y - this.dragStartY
+      this.scrollY = this.dragStartScrollY + deltaY
+
+      // Calculate scroll bounds
+      const buttonHeight = 300
+      const buttonGap = 40
+      const contentHeight = buttonHeight * 3 + buttonGap * 2 + 200 // 3 buttons + gaps + top padding
+      const viewportHeight = GameSettings.canvas.height
+      const maxScroll = 0
+      const minScroll = Math.min(0, viewportHeight - contentHeight)
+
+      // Clamp scroll position
+      this.scrollY = Math.max(minScroll, Math.min(maxScroll, this.scrollY))
+
+      // Apply scroll to container
+      this.scrollContainer.y = this.scrollY
+    }
+  }
+
+  private handlePointerUp(pointer: Phaser.Input.Pointer): void {
+    // If not dragging (just a tap), check if a button was tapped
+    if (!this.isDragging) {
+      const buttonWidth = 680
+      const buttonHeight = 300
+
+      for (const button of this.levelButtons) {
+        if (!button.isUnlocked) continue
+
+        // Get button's world position (container position + scroll offset)
+        const buttonWorldY = button.container.y + this.scrollY
+        const buttonWorldX = button.container.x
+
+        // Check if tap is within button bounds
+        const halfWidth = buttonWidth / 2
+        const halfHeight = buttonHeight / 2
+
+        if (
+          pointer.x >= buttonWorldX - halfWidth &&
+          pointer.x <= buttonWorldX + halfWidth &&
+          pointer.y >= buttonWorldY - halfHeight &&
+          pointer.y <= buttonWorldY + halfHeight
+        ) {
+          this.startLevel(button.levelId)
+          return
+        }
+      }
+    }
+
+    // Reset drag state
+    this.isPointerDown = false
+    this.isDragging = false
   }
 }
