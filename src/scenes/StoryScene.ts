@@ -48,6 +48,7 @@ export class StoryScene extends Phaser.Scene {
     this.levelButtons = []
     this.scrollY = 0
     this.isDragging = false
+    this.isPointerDown = false
 
     // Create scroll container to hold all level buttons
     // Buttons are positioned relative to this container (y=0 is first button center)
@@ -317,6 +318,9 @@ export class StoryScene extends Phaser.Scene {
   }
 
   private handlePointerUp(pointer: Phaser.Input.Pointer): void {
+    // Ignore pointerup if we didn't track a pointerdown (e.g., from previous scene)
+    if (!this.isPointerDown) return
+
     // If not dragging (just a tap), check if a button was tapped
     if (!this.isDragging) {
       const buttonWidth = 680
