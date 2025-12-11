@@ -3,7 +3,7 @@ import { LevelConfig, DEFAULT_LEVEL_CONFIG } from './LevelConfig'
 /**
  * Level identifiers for the game
  */
-export type LevelId = 'quick-play' | 'speed-rush' | 'heavy-blocks' | 'the-belt'
+export type LevelId = 'quick-play' | 'speed-rush' | 'heavy-blocks' | 'the-belt' | 'black-hole'
 
 /**
  * Map of level IDs to their configuration
@@ -28,6 +28,12 @@ export const LEVEL_CONFIGS: Record<LevelId, LevelConfig> = {
     dumpInterval: 10000,
     blockCountGoal: 1000,
   },
+  'black-hole': {
+    ...DEFAULT_LEVEL_CONFIG,
+    baseGravity: 350,
+    spawnRate: 400,
+    blockCountGoal: 1200,
+  }
 }
 
 /**

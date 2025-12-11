@@ -37,6 +37,10 @@ export class StoryScene extends Phaser.Scene {
       'theBeltBg',
       'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/the-belt-OSbKtxSOBTeRn8WPZvn5puJue962Gg.webp?wd1w'
     )
+    this.load.image(
+      'blackHoleBg',
+      'https://remix.gg/blob/f02f9e30-e415-4b1e-b090-0f0c19d9fd25/blackhole-MgC3nV5ifFDwy2bNhu6kIB3axBz3vz.webp?2q7z'
+    )
   }
 
   create(): void {
@@ -239,6 +243,69 @@ export class StoryScene extends Phaser.Scene {
       isUnlocked: isTheBeltUnlocked
     })
 
+    // Create BLACK HOLE button
+    const isBlackHoleUnlocked = theBeltHighScore > 0
+    const blackHoleImage = this.add.image(0, 0, 'blackHoleBg')
+      .setDisplaySize(buttonWidth, buttonHeight)
+    if (!isBlackHoleUnlocked) {
+      blackHoleImage.setTint(0x666666)
+    }
+    const blackHoleBorder = this.add.graphics()
+      .lineStyle(3, isBlackHoleUnlocked ? 0xffffff : 0x666666, 1)
+      .strokeRoundedRect(-buttonWidth / 2, -buttonHeight / 2, buttonWidth, buttonHeight, 15)
+    const blackHoleText = this.add.text(
+      buttonWidth / 2 - 20,
+      -buttonHeight / 2 + 20,
+      'URANUS II',
+      {
+        fontSize: '48px',
+        color: isBlackHoleUnlocked ? '#ffffff' : '#666666',
+        fontFamily: 'Arial',
+        fontStyle: 'bold',
+        shadow: {
+          offsetX: 2,
+          offsetY: 2,
+          color: '#000000',
+          blur: 4,
+          fill: true,
+        },
+      }
+    ).setOrigin(1, 0)
+    const blackHoleHighScore = GlobalGameState.getInstance().getHighScore('black-hole')
+    const blackHoleContainerChildren: Phaser.GameObjects.GameObject[] = [blackHoleImage, blackHoleBorder, blackHoleText]
+    if (blackHoleHighScore > 0) {
+      const blackHoleHighScoreText = this.add.text(
+        buttonWidth / 2 - 20,
+        buttonHeight / 2 - 20,
+        `Best: ${blackHoleHighScore}`,
+        {
+          fontSize: '32px',
+          color: '#ffffff',
+          fontFamily: 'Arial',
+          fontStyle: 'bold',
+          shadow: {
+            offsetX: 2,
+            offsetY: 2,
+            color: '#000000',
+            blur: 4,
+            fill: true,
+          },
+        }
+      ).setOrigin(1, 1)
+      blackHoleContainerChildren.push(blackHoleHighScoreText)
+    }
+    const blackHoleContainer = this.add.container(
+      GameSettings.canvas.width / 2,
+      buttonHeight / 2 + 100 + (buttonHeight + buttonGap) * 3,
+      blackHoleContainerChildren
+    )
+    this.scrollContainer.add(blackHoleContainer)
+    this.levelButtons.push({
+      container: blackHoleContainer,
+      levelId: 'black-hole',
+      isUnlocked: isBlackHoleUnlocked
+    })
+
     // Set up scroll input handlers
     this.input.on('pointerdown', this.handlePointerDown, this)
     this.input.on('pointermove', this.handlePointerMove, this)
@@ -304,7 +371,7 @@ export class StoryScene extends Phaser.Scene {
       // Calculate scroll bounds
       const buttonHeight = 300
       const buttonGap = 40
-      const contentHeight = buttonHeight * 3 + buttonGap * 2 + 200 // 3 buttons + gaps + top padding
+      const contentHeight = buttonHeight * 4 + buttonGap * 3 + 200 // 4 buttons + gaps + top padding
       const viewportHeight = GameSettings.canvas.height
       const maxScroll = 0
       const minScroll = Math.min(0, viewportHeight - contentHeight)
