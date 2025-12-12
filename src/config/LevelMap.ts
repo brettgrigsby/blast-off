@@ -31,6 +31,7 @@ export const LEVEL_CONFIGS: Record<LevelId, LevelConfig> = {
   'black-hole': {
     ...DEFAULT_LEVEL_CONFIG,
     baseGravity: 350,
+    massGravityFactor: 125,
     spawnRate: 400,
     blockCountGoal: 1200,
   }
