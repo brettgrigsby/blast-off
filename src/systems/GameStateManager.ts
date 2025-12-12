@@ -25,6 +25,7 @@ interface SaveState {
   b: SavedBlock[]  // blocks
   g?: SavedGroup[] // groups (omit if empty)
   lct?: { [column: number]: number } // loseConditionTimers: column -> remaining ms (omit if empty)
+  et?: number      // elapsed time in ms (omit if 0)
 }
 
 // Top-level game state structure
@@ -43,13 +44,15 @@ export class GameStateManager {
    * @param blocksRemoved The current score (blocks removed)
    * @param loseConditionTimers Map of column timers for lose condition
    * @param levelId The ID of the current level being played
+   * @param startTime The timestamp when the level started (for elapsed time calculation)
    * @returns GameState with currentLevel.boardState structure
    */
   static serialize(
     columnManager: ColumnManager,
     blocksRemoved: number,
     loseConditionTimers: Map<number, Phaser.Time.TimerEvent>,
-    levelId: string
+    levelId: string,
+    startTime: number
   ): GameState {
     const allBlocks = columnManager.getAllBlocks()
     const groups = columnManager.getGroups()
@@ -132,6 +135,12 @@ export class GameStateManager {
     // Only include groups if there are any
     if (savedGroups.length > 0) {
       saveState.g = savedGroups
+    }
+
+    // Save elapsed time (for score calculation on reload)
+    const elapsedTime = Date.now() - startTime
+    if (elapsedTime > 0) {
+      saveState.et = Math.round(elapsedTime)
     }
 
     // Serialize lose condition timers

@@ -1445,7 +1445,8 @@ export class LevelScene extends Phaser.Scene {
         this.columnManager,
         this.blocksRemoved,
         this.loseConditionTimers,
-        this.currentLevelId
+        this.currentLevelId,
+        this.startTime
       )
 
       // Update global state (this will save to SDK as a side effect)
@@ -1495,6 +1496,11 @@ export class LevelScene extends Phaser.Scene {
 
     const { saveState, levelId } = deserialized
     this.currentLevelId = levelId
+
+    // Restore start time from elapsed time (for accurate score calculation)
+    if (saveState.et && saveState.et > 0) {
+      this.startTime = Date.now() - saveState.et
+    }
 
     console.log('Loading game state', saveState, 'for level', levelId)
 
