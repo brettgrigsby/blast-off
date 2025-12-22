@@ -34,8 +34,12 @@ export class LevelScene extends Phaser.Scene {
   // Score tracking (Iteration 5)
   private blocksRemoved: number = 0
   private finalScore: number = 0
-  private scoreText!: Phaser.GameObjects.Text
   private startTime: number = 0
+
+  // Progress bar (replaces score text)
+  private progressBarFill!: Phaser.GameObjects.Graphics
+  private progressBarBackground!: Phaser.GameObjects.Graphics
+  private progressBarCheckered!: Phaser.GameObjects.Graphics
 
   // Grey block recovery tracking
   private blocksReadyToRecover: Block[] = []
@@ -596,32 +600,54 @@ export class LevelScene extends Phaser.Scene {
       // Empty callback - continuous match checking handles this now
     })
 
-    // Add score counter at bottom left (Iteration 5)
-    this.scoreText = this.add
-      .text(
-        20,
-        GameSettings.canvas.height - 20,
-        '0',
-        {
-          fontSize: '48px',
-          color: '#ffffff',
-          fontFamily: 'Arial',
-          fontStyle: 'bold',
-        }
-      )
-      .setOrigin(0, 1)
-      .setDepth(1000) // Keep text above blocks
+    // Calculate bottom section dimensions (used by progress bar, pause button, LFG button)
+    const gridBottom = ColumnManager.GRID_OFFSET_Y + (ColumnManager.ROWS * ColumnManager.ROW_HEIGHT)
+    const bottomSectionHeight = GameSettings.canvas.height - gridBottom
 
-    // Initialize score display with correct value (countdown or count-up)
-    this.updateScoreDisplay()
+    // Add progress bar at bottom left (only when blockCountGoal is defined)
+    if (this.levelConfig.blockCountGoal !== undefined) {
+      const barHeight = bottomSectionHeight
+      const barWidth = 200
+      const checkeredWidth = 20
+      const fillMaxWidth = barWidth - checkeredWidth
+
+      // Background (dark fill area)
+      this.progressBarBackground = this.add.graphics()
+      this.progressBarBackground.fillStyle(0x333333, 1)
+      this.progressBarBackground.fillRect(0, gridBottom, fillMaxWidth, barHeight)
+      this.progressBarBackground.setDepth(1000)
+
+      // Progress fill (grows from left)
+      this.progressBarFill = this.add.graphics()
+      this.progressBarFill.setDepth(1001)
+
+      // Checkered finish line (right edge)
+      this.progressBarCheckered = this.add.graphics()
+      const squareSize = 15 // 6 squares tall (90/15)
+      for (let row = 0; row < Math.ceil(barHeight / squareSize); row++) {
+        for (let col = 0; col < Math.ceil(checkeredWidth / squareSize); col++) {
+          const isWhite = (row + col) % 2 === 0
+          this.progressBarCheckered.fillStyle(isWhite ? 0xffffff : 0x000000, 1)
+          this.progressBarCheckered.fillRect(
+            fillMaxWidth + (col * squareSize),
+            gridBottom + (row * squareSize),
+            squareSize,
+            squareSize
+          )
+        }
+      }
+      this.progressBarCheckered.setDepth(1002)
+
+      // Initialize progress bar display
+      this.updateScoreDisplay()
+    }
 
     // Add pause button at bottom right (two rectangles)
     // Rectangles: centered at their positions, spans x:0-16 and x:24-40, y:-20 to 20
     const pauseRect1 = this.add.rectangle(8, 0, 16, 40, 0xffffff)
     const pauseRect2 = this.add.rectangle(32, 0, 16, 40, 0xffffff)
     // Make hit area twice as wide as visual (80px) and full height of bottom section
-    const gridBottom = ColumnManager.GRID_OFFSET_Y + (ColumnManager.ROWS * ColumnManager.ROW_HEIGHT)
-    const pauseButtonHeight = GameSettings.canvas.height - gridBottom
+    const pauseButtonHeight = bottomSectionHeight
     this.pauseButton = this.add.container(
       GameSettings.canvas.width - 60,
       GameSettings.canvas.height - (pauseButtonHeight / 2),
@@ -636,13 +662,12 @@ export class LevelScene extends Phaser.Scene {
       .on('pointerdown', () => this.pauseGame())
 
     // Add LFG button at bottom middle (full height of bottom section: 90px)
-    const bottomSectionHeight = GameSettings.canvas.height - gridBottom
     const buttonCenterY = gridBottom + (bottomSectionHeight / 2)
     const buttonHalfHeight = bottomSectionHeight / 2
 
     this.lfgButtonBg = this.add.graphics()
       .fillStyle(0x03ad86, 0.8)
-      .fillRect(-150, -buttonHalfHeight, 300, bottomSectionHeight)
+      .fillRect(-100, -buttonHalfHeight, 200, bottomSectionHeight)
     const lfgButtonIcon = this.add.image(0, 0, 'fallingBlock')
       .setOrigin(0.5)
     this.lfgButton = this.add.container(
@@ -652,7 +677,7 @@ export class LevelScene extends Phaser.Scene {
     )
       .setDepth(1000)
       .setInteractive({
-        hitArea: new Phaser.Geom.Rectangle(-150, -buttonHalfHeight, 300, bottomSectionHeight),
+        hitArea: new Phaser.Geom.Rectangle(-100, -buttonHalfHeight, 200, bottomSectionHeight),
         hitAreaCallback: Phaser.Geom.Rectangle.Contains,
         useHandCursor: true
       })
@@ -769,7 +794,9 @@ export class LevelScene extends Phaser.Scene {
     // Configure for background mode if needed
     if (this.isBackgroundMode) {
       // Hide UI elements
-      this.scoreText.setVisible(false)
+      if (this.progressBarBackground) this.progressBarBackground.setVisible(false)
+      if (this.progressBarFill) this.progressBarFill.setVisible(false)
+      if (this.progressBarCheckered) this.progressBarCheckered.setVisible(false)
       this.pauseButton.setVisible(false)
       this.lfgButton.setVisible(false)
 
@@ -868,20 +895,24 @@ export class LevelScene extends Phaser.Scene {
   }
 
   /**
-   * Update the score display (Iteration 5)
-   * Shows countdown when blockCountGoal is set, otherwise shows count up
+   * Update the progress bar display
+   * Shows progress toward blockCountGoal (only when goal is defined)
    */
   private updateScoreDisplay(): void {
-    if (this.scoreText) {
-      if (this.levelConfig.blockCountGoal !== undefined) {
-        // Countdown mode - show remaining blocks
-        const remaining = Math.max(0, this.levelConfig.blockCountGoal - this.blocksRemoved)
-        this.scoreText.setText(`${remaining}`)
-      } else {
-        // Count up mode - show blocks removed (original behavior)
-        this.scoreText.setText(`${this.blocksRemoved}`)
-      }
-    }
+    if (!this.progressBarFill || this.levelConfig.blockCountGoal === undefined) return
+
+    const gridBottom = ColumnManager.GRID_OFFSET_Y + (ColumnManager.ROWS * ColumnManager.ROW_HEIGHT)
+    const barHeight = GameSettings.canvas.height - gridBottom
+    const fillMaxWidth = 180 // barWidth (200) - checkeredWidth (20)
+
+    // Calculate progress (0 to 1)
+    const progress = Math.min(1, this.blocksRemoved / this.levelConfig.blockCountGoal)
+    const fillWidth = fillMaxWidth * progress
+
+    // Redraw fill bar
+    this.progressBarFill.clear()
+    this.progressBarFill.fillStyle(0x00ff00, 1) // Green fill
+    this.progressBarFill.fillRect(0, gridBottom, fillWidth, barHeight)
   }
 
   /**
@@ -1366,7 +1397,7 @@ export class LevelScene extends Phaser.Scene {
         // Redraw button with new color
         this.lfgButtonBg.clear()
         this.lfgButtonBg.fillStyle(color, 0.8)
-        this.lfgButtonBg.fillRect(-150, -buttonHalfHeight, 300, bottomSectionHeight)
+        this.lfgButtonBg.fillRect(-100, -buttonHalfHeight, 200, bottomSectionHeight)
       }
     })
 
@@ -1414,7 +1445,7 @@ export class LevelScene extends Phaser.Scene {
     // Reset button to original color
     this.lfgButtonBg.clear()
     this.lfgButtonBg.fillStyle(0x03ad86, 0.8)
-    this.lfgButtonBg.fillRect(-150, -buttonHalfHeight, 300, bottomSectionHeight)
+    this.lfgButtonBg.fillRect(-100, -buttonHalfHeight, 200, bottomSectionHeight)
 
     // Disable LFG mode in BlockSpawner (also resets spawn rate)
     this.blockSpawner.disableLFGMode()
